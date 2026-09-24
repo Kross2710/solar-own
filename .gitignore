@@ -1,0 +1,29 @@
+# Secrets and private runtime data
+config.json
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# OS and editor
+.DS_Store
+.vscode/
+.idea/
