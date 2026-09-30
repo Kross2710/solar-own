@@ -5,6 +5,7 @@ sẵn đường cong, và dữ liệu sống sót qua restart server.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -99,6 +100,21 @@ class HistoryStore:
                  day  TEXT PRIMARY KEY,
                  imp0 REAL,   -- công tơ mua (kWh) tại 0h
                  exp0 REAL    -- công tơ bán (kWh) tại 0h
+               )"""
+        )
+        # Proactive notices: one row per (kind, dkey) so a rule can't fire twice for the same
+        # event; `expires` hides stale ones, `dismissed` is the user's "got it".
+        con.execute(
+            """CREATE TABLE IF NOT EXISTS notices(
+                 id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                 ts        TEXT,
+                 kind      TEXT,
+                 dkey      TEXT,
+                 severity  TEXT,
+                 data      TEXT,
+                 expires   TEXT,
+                 dismissed INTEGER DEFAULT 0,
+                 UNIQUE(kind, dkey)
                )"""
         )
 
@@ -437,6 +453,13 @@ class HistoryStore:
         rows.reverse()
         return rows
 
+    def first_generation_day(self) -> str | None:
+        """Ngày đầu tiên có sản lượng (≈ ngày lắp solar), 'YYYY-MM-DD' hoặc None."""
+        con = sqlite3.connect(self.path)
+        row = con.execute("SELECT MIN(day) FROM daily WHERE kwh > 0").fetchone()
+        con.close()
+        return row[0] if row else None
+
     def daily_count(self) -> int:
         con = sqlite3.connect(self.path)
         n = con.execute("SELECT COUNT(*) FROM daily").fetchone()[0]
@@ -577,6 +600,50 @@ class HistoryStore:
         con.close()
         rows.reverse()
         return rows
+
+    # ---------- notices ----------
+    def notice_add(self, kind: str, dkey: str, severity: str, data: dict, expires: str) -> bool:
+        """Insert unless (kind, dkey) already exists. True when a new notice was added."""
+        ts = datetime.now(VN_TZ).strftime("%Y-%m-%dT%H:%M")
+        con = sqlite3.connect(self.path)
+        cur = con.execute(
+            "INSERT OR IGNORE INTO notices(ts, kind, dkey, severity, data, expires) VALUES(?,?,?,?,?,?)",
+            (ts, kind, dkey, severity, json.dumps(data, ensure_ascii=False), expires),
+        )
+        con.commit()
+        added = cur.rowcount > 0
+        con.close()
+        return added
+
+    def notices_recent(self, limit: int = 20, active_at: Optional[str] = None) -> list[dict]:
+        """Newest first. With `active_at` (YYYY-MM-DDTHH:MM) only unexpired, undismissed ones."""
+        con = sqlite3.connect(self.path)
+        con.row_factory = sqlite3.Row
+        where = "WHERE dismissed = 0 AND expires > ?" if active_at else ""
+        params: tuple = (active_at, max(1, limit)) if active_at else (max(1, limit),)
+        cur = con.execute(
+            f"SELECT id, ts, kind, dkey, severity, data, expires FROM notices {where} "
+            "ORDER BY id DESC LIMIT ?",
+            params,
+        )
+        rows = []
+        for r in cur.fetchall():
+            row = dict(r)
+            try:
+                row["data"] = json.loads(row["data"] or "{}")
+            except Exception:
+                row["data"] = {}
+            rows.append(row)
+        con.close()
+        return rows
+
+    def notice_dismiss(self, notice_id: int) -> bool:
+        con = sqlite3.connect(self.path)
+        cur = con.execute("UPDATE notices SET dismissed = 1 WHERE id = ?", (notice_id,))
+        con.commit()
+        changed = cur.rowcount > 0
+        con.close()
+        return changed
 
     # ---------- thời tiết ngày (đặc trưng cho dự báo sản lượng) ----------
     _WX_COLS = ("rad", "sun", "daylight", "tmax", "tmean", "tmin",

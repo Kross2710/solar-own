@@ -9,10 +9,16 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.assistant import router as assistant_router
 from backend.api.history import router as history_router
 from backend.api.metrics import router as metrics_router
+from backend.api.optimization import router as optimization_router
+from backend.api.system import router as system_router
 from backend.runtime import AppRuntime, create_runtime
 from backend.services.collector import close_providers, poll_loop
+from backend.services.forecast import forecast_loop
+from backend.services.notices import notices_loop
+from backend.services.sync import evn_loop, sync_loop
 from backend.static import NoCacheStaticFiles
 
 
@@ -25,12 +31,19 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        poll_task = asyncio.create_task(poll_loop(app_runtime))
+        tasks = [
+            asyncio.create_task(poll_loop(app_runtime)),
+            asyncio.create_task(sync_loop(app_runtime)),
+            asyncio.create_task(evn_loop(app_runtime)),
+            asyncio.create_task(forecast_loop(app_runtime)),
+            asyncio.create_task(notices_loop(app_runtime)),
+        ]
         try:
             yield
         finally:
-            poll_task.cancel()
-            await asyncio.gather(poll_task, return_exceptions=True)
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
             await close_providers(app_runtime)
 
     application = FastAPI(
@@ -56,6 +69,9 @@ def create_app(
 
     application.include_router(metrics_router)
     application.include_router(history_router)
+    application.include_router(optimization_router)
+    application.include_router(assistant_router)
+    application.include_router(system_router)
 
     web_root = app_runtime.root / "web"
     if mount_static and web_root.exists():
