@@ -23,7 +23,8 @@ if __name__ == "__main__":
     import uvicorn
 
     config = runtime.config
-    host = config.get("host", "127.0.0.1")
+    # HOST and PORT let the public port stay on the web server without editing config.json.
+    host = os.environ.get("HOST") or config.get("host", "127.0.0.1")
     port = int(os.environ.get("PORT") or config.get("port", 8787))
 
     print(f"     Current live provider: {runtime.live_provider.__class__.__name__}")
