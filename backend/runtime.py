@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import asyncio
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +11,10 @@ from fastapi import Request
 
 from backend.config import PROJECT_ROOT, load_config
 from backend.provider_factory import build_provider
+from providers.assistant import Assistant
 from providers.base import Provider
 from providers.evn import EvnTariff
+from providers.forecast import SolarForecaster
 from providers.history import HistoryStore
 
 
@@ -26,6 +29,15 @@ class AppRuntime:
     tariff: EvnTariff
     latest: dict[str, Any] | None = None
     live_fallback_on: bool = False
+    forecaster: SolarForecaster = field(default_factory=SolarForecaster)
+    # Weather fetch + training must not overlap (loop vs. first /api/forecast request).
+    forecast_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    # Set after the first history sync, so training does not run on stale data.
+    synced: asyncio.Event = field(default_factory=asyncio.Event)
+    # The 12 h loop and "Sync now" must not hit SEMS at the same time.
+    sync_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    last_sync: dict[str, Any] | None = None
+    assistant: Assistant | None = None
 
     @property
     def history_source(self) -> str | None:
@@ -62,6 +74,7 @@ def create_runtime(
         poll_interval=poll_interval,
         store=HistoryStore(root / "history.db"),
         tariff=EvnTariff.from_config(app_config.get("evn")),
+        assistant=Assistant(app_config.get("ai")),
     )
 
 

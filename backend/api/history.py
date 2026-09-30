@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from backend import config
 from backend.runtime import AppRuntime, get_runtime
 from backend.services.history_summary import build_summary
+from backend.services.money import build_money
 from providers.base import VN_TZ
 
 
@@ -73,28 +74,14 @@ async def summary(
         )
     )
 
-# WIP
-# @router.get("/hourly")
-# async def hourly(
-#     runtime: AppRuntime = Depends(get_runtime),
-# ) -> JSONResponse:
-#     """Hồ sơ 24 giờ TB + giá biên — cho "giờ vàng dịch tải" (#9)."""
+@router.get("/money")
+async def money(
+    runtime: AppRuntime = Depends(get_runtime),
+) -> JSONResponse:
+    """EVN tiered savings + projected bill + the real EVN bill of the last closed cycle."""
+    return JSONResponse(build_money(runtime, datetime.datetime.now(VN_TZ).date()))
 
-#     monthly_buy = sum((r.get("buy", 0) for r in runtime.store.daily_full(35)[-30:]))
-#     return JSONResponse({
-#         "hours": runtime.store.hourly_profile(30),
-#         "marginal": round(runtime.tariff.marginal(monthly_buy or 235)),
-#         "currency": runtime.config.get("currency") or "VND",
-#     })
-    
-# NEED ML FIRST TO PREDICT BASED ON WEATHER + USAGE + TARIFF
-# @router.get("/money")
-# async def money(
-#     runtime: AppRuntime = Depends(get_runtime),
-# ) -> JSONResponse:
-#     """Tiền điện theo bậc thang EVN: tiết kiệm + hoá đơn dự kiến + hoá đơn EVN THẬT (kỳ đã chốt)."""
-#     today = datetime.now(VN_TZ).date() # type: ignore
-    
+
 # @router.get("/evn")
 # async def evn(
 #     runtime: AppRuntime = Depends(get_runtime),

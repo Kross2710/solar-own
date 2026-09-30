@@ -45,6 +45,9 @@ class FakeStore:
     def daily_full(self, days: int) -> list[dict]:
         return self.rows[-days:]
 
+    def hourly_profile(self, days: int) -> list[dict]:
+        return [{"hour": h, "pv": 0, "load": 500, "grid": 500, "n": 1} for h in range(24)]
+
     def monthly(self, months: int) -> list[dict]:
         return [
             {
@@ -108,3 +111,21 @@ class ApiSmokeTests(TestCase):
         summary = self.client.get("/api/summary").json()
         self.assertEqual(summary["currency"], "VND")
         self.assertEqual(summary["monthly"][0]["kwh"], 20.0)
+
+        money = self.client.get("/api/money")
+        self.assertEqual(money.status_code, 200)
+        self.assertEqual(money.json()["currency"], "VND")
+        self.assertIsNone(money.json()["payback"])
+        self.assertNotIn("evn_bill", money.json())
+        self.assertEqual(money.json()["evn_history"], [])
+        self.assertEqual(money.json()["solar_start"], "2026-09-01")
+
+        self.assertEqual(self.client.get("/api/curtailment").json(), {"supported": False})
+        self.assertEqual(self.client.get("/api/forecast").json()["ready"], False)
+
+    def test_hourly_route(self) -> None:
+        hourly = self.client.get("/api/hourly").json()
+
+        self.assertEqual(hourly["currency"], "VND")
+        self.assertEqual(len(hourly["hours"]), 24)
+        self.assertGreater(hourly["marginal"], 0)
