@@ -6,7 +6,7 @@ interface StatCard {
 
 export default function HistoryStatGrid({ items }: { items: StatCard[] }) {
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2">
+    <div className="mt-3 grid grid-cols-2 gap-2 xl:mt-0 xl:grid-cols-1">
       {items.map(({ label, value, detail }) => (
         <article className="rounded-xl border border-white/10 bg-black/10 p-3" key={label}>
           <p className="text-[11px] text-zinc-400">{label}</p>

@@ -11,11 +11,11 @@ export default function SelfPoweredCard( {selfPoweredDays, selfPoweredDates, avg
         <span className="text-xs font-bold text-good">avg {avgSelfPowered}%</span>
       </div>
 
-      <div className="mt-4 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1.5">
+      <div className="mt-4 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1.5 xl:grid-cols-[repeat(30,minmax(0,1fr))] xl:gap-1">
         {selfPoweredDays.map((value, index) => (
           <span
             key={index}
-            className={`h-5 rounded-[3px] ${
+            className={`h-5 rounded-[3px] xl:h-8 ${
               value < 50
                 ? "bg-pv/40"
                 : value >= 85

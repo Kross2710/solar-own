@@ -59,7 +59,7 @@ function FullCycleCard({ cycle }: { cycle: MoneyCycle }) {
 
 function AllTimeCard({ total, payback }: { total: MoneyTotal; payback: MoneyPayback | null }) {
   return (
-    <article className={`${cardClass} col-span-2`}>
+    <article className={`${cardClass} col-span-2 xl:col-span-1`}>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-[11px] text-zinc-400">All-time</p>
         {total.months > 0 && (
@@ -86,7 +86,7 @@ function AllTimeCard({ total, payback }: { total: MoneyTotal; payback: MoneyPayb
 
 export default function SavingsCards({ today, cycle, total, payback }: SavingsCardsProps) {
   return (
-    <section className="grid grid-cols-2 gap-2" aria-label="Savings">
+    <section className="grid grid-cols-2 gap-2 xl:grid-cols-3 xl:gap-3" aria-label="Savings">
       <TodayCard today={today} />
       <FullCycleCard cycle={cycle} />
       <AllTimeCard total={total} payback={payback} />

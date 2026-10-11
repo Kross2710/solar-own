@@ -67,16 +67,26 @@ export default function OptimizationPage() {
 
   return (
     <DashboardShell status={metricsError ? "error" : "online"} source="">
-      <TonightHero
-        kind={kind}
-        tomorrowKwh={tomorrow?.kwh ?? null}
-        advice={planAdvice(kind, plan?.enough ?? null)}
-        plan={plan}
-      />
-      <DoNowCard suggestions={suggestions} />
-      <BestHoursCard cells={cells} now={now} />
-      {curtailment?.supported && <WastedSunCard data={curtailment} />}
-      {ready && <ForecastCard days={ready.days} avg30={ready.avg30_kwh} mae={ready.quality.mae ?? null} />}
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
+        <TonightHero
+          kind={kind}
+          tomorrowKwh={tomorrow?.kwh ?? null}
+          advice={planAdvice(kind, plan?.enough ?? null)}
+          plan={plan}
+        />
+        <div className="flex flex-col gap-7">
+          <DoNowCard suggestions={suggestions} />
+          <BestHoursCard cells={cells} now={now} />
+        </div>
+      </div>
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-start">
+        {curtailment?.supported && <WastedSunCard data={curtailment} />}
+        {ready && (
+          <div className={curtailment?.supported ? "" : "xl:col-span-2"}>
+            <ForecastCard days={ready.days} avg30={ready.avg30_kwh} mae={ready.quality.mae ?? null} />
+          </div>
+        )}
+      </div>
     </DashboardShell>
   );
 }

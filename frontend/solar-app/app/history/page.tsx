@@ -133,8 +133,10 @@ export default function HistoryPage() {
         </p>
       </section>
 
-      <Card accent="pv">
-        <HistoryChart range={range} onRangeChange={setRange} data={activeBars} />
+      <Card accent="pv" className="xl:grid xl:grid-cols-[minmax(0,1fr)_280px] xl:items-center xl:gap-6">
+        <div className="min-w-0">
+          <HistoryChart range={range} onRangeChange={setRange} data={activeBars} />
+        </div>
         <HistoryStatGrid items={statItems} />
       </Card>
 

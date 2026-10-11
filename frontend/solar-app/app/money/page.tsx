@@ -28,22 +28,26 @@ export default function MoneyPage() {
 
   return (
     <DashboardShell status="online" source="">
-      <SavingsHero cycle={money.cycle} />
-      <SavingsCards
-        today={money.today}
-        cycle={money.cycle}
-        total={money.total}
-        payback={money.payback}
-      />
-      <EvnBillCard
-        cycle={money.cycle}
-        prevCycle={money.prev_cycle}
-        tier={money.tier}
-        evnBill={money.evn_bill}
-        history={money.evn_history ?? []}
-        solarStart={money.solar_start ?? null}
-      />
-      <TierLadderCard tier={money.tier} billNow={money.cycle.bill_now} />
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
+        <SavingsHero cycle={money.cycle} />
+        <SavingsCards
+          today={money.today}
+          cycle={money.cycle}
+          total={money.total}
+          payback={money.payback}
+        />
+      </div>
+      <div className="grid gap-7 xl:grid-cols-2 xl:items-start">
+        <EvnBillCard
+          cycle={money.cycle}
+          prevCycle={money.prev_cycle}
+          tier={money.tier}
+          evnBill={money.evn_bill}
+          history={money.evn_history ?? []}
+          solarStart={money.solar_start ?? null}
+        />
+        <TierLadderCard tier={money.tier} billNow={money.cycle.bill_now} />
+      </div>
     </DashboardShell>
   );
 }

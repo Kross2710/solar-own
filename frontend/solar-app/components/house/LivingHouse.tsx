@@ -122,7 +122,7 @@ export default function LivingHouse({ scene }: { scene: SceneData }) {
 
   return (
     <div
-      className="relative mx-auto w-full max-w-[420px] select-none"
+      className="relative mx-auto w-full max-w-[420px] select-none lg:max-w-[540px]"
       onKeyDown={(event) => event.key === "Escape" && setOpen(null)}
     >
       <div className="relative" onClick={() => setOpen(null)}>
