@@ -106,11 +106,15 @@ export default function Dashboard() {
   return (
     <DashboardShell status={data?.status} source={data?.source} updatedAt={data?.timestamp}>
       {/* Stale bar cảnh báo */}
-      <div className="stale" id="staleBar" hidden={!data?.error}>
-        <span className="stale-ico">
+      <div
+        className="flex items-center gap-[9px] rounded-xl border border-grid-in/50 bg-grid-in/14 px-3.5 py-[9px] text-[13px] font-semibold text-grid-in"
+        id="staleBar"
+        hidden={!data?.error}
+      >
+        <span className="shrink-0 text-base">
           <i className="fa-solid fa-triangle-exclamation" />
         </span>
-        <span className="stale-text" id="staleText">{data?.error}</span>
+        <span id="staleText">{data?.error}</span>
       </div>
 
       <Card pad="px-3 py-3 sm:px-8 sm:py-10" className="relative">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { cycleCountdownLabel, isTooEarlyToProject } from "@/app/money/money.helpers";
 import { buildSuggestions, dayKind, lockedQual, tomorrowOf } from "@/app/optimization/optimization.helpers";
 import { useMoney } from "@/hooks/useMoney";
 import Card from "@/components/Card";
@@ -31,6 +32,7 @@ export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
   }, [tomorrow, ready?.avg30_kwh]);
   const suggestion = buildSuggestions({ metrics, kind, tier: money?.tier, hour })[0];
   const saved = money?.today.saved;
+  const cycle = money?.cycle;
 
   return (
     <Card pad="p-4 sm:p-5" aria-labelledby="today-actions">
@@ -51,7 +53,11 @@ export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
                     ? "Today's savings"
                     : `Saved today ~${fmtMoneyShort(saved)}`}
               </span>
-              <span className="mt-0.5 block text-[11px] text-zinc-400">Open Money</span>
+              <span className="mt-0.5 block text-[11px] tabular-nums text-zinc-400">
+                {cycle
+                  ? `${isTooEarlyToProject(cycle) ? "EVN cycle" : `EVN bill ~${fmtMoneyShort(cycle.bill_proj)}`} · ${cycleCountdownLabel(cycle)}`
+                  : "Open Money"}
+              </span>
             </span>
             <i className="fa-solid fa-chevron-right text-[10px] text-zinc-500" />
           </Link>

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Card from "@/components/Card";
 import DashboardShell from "@/components/DashboardShell";
-import HistoryChart, { Range, ChartBarData } from "../../components/HistoryChart";
+import HistoryChart, { Range } from "../../components/HistoryChart";
 import HistoryStatGrid from "../../components/HistoryStatGrid";
 import SelfPoweredCard from "../../components/SelfPoweredCard";
 

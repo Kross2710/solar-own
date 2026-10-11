@@ -194,6 +194,17 @@ export function cycleRangeLabel(cycle: MoneyCycle): string {
   return `${parseDateMonth(cycle.start)} → ${parseDateMonth(cycle.end)}`;
 }
 
+// days_elapsed counts today, and cycle.end is the first day of the next cycle.
+export function cycleCountdownLabel(cycle: MoneyCycle): string {
+  const daysLeft = cycle.days_in_cycle - cycle.days_elapsed;
+  if (daysLeft <= 0) return "resets tomorrow";
+  return `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`;
+}
+
+export function cycleElapsedPct(cycle: MoneyCycle): number {
+  return clampPct((cycle.days_elapsed / cycle.days_in_cycle) * 100);
+}
+
 export function isLastCycleDay(cycle: MoneyCycle): boolean {
   return cycle.days_elapsed >= cycle.days_in_cycle;
 }

@@ -1,4 +1,4 @@
-import { cycleRangeLabel, solarSharePct } from "@/app/money/money.helpers";
+import { cycleCountdownLabel, cycleElapsedPct, cycleRangeLabel, solarSharePct } from "@/app/money/money.helpers";
 import { fmtMoneyShort } from "@/lib/format";
 import { MoneyCycle } from "@/lib/types/money";
 
@@ -7,8 +7,16 @@ export default function SavingsHero({ cycle }: { cycle: MoneyCycle }) {
 
   return (
     <section className="text-center" aria-labelledby="cycle-savings">
-      <span className="inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-zinc-400 tabular-nums">
-        {cycleRangeLabel(cycle)} · day {cycle.days_elapsed}
+      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-zinc-400 tabular-nums">
+        {cycleRangeLabel(cycle)}
+        <span
+          className="h-1 w-10 overflow-hidden rounded-full bg-white/10"
+          role="img"
+          aria-label={`Day ${cycle.days_elapsed} of ${cycle.days_in_cycle}`}
+        >
+          <span className="block h-full rounded-full bg-zinc-300" style={{ width: `${cycleElapsedPct(cycle)}%` }} />
+        </span>
+        <span className="font-semibold text-zinc-200">{cycleCountdownLabel(cycle)}</span>
       </span>
 
       <p className="mt-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="cycle-savings">

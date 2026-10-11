@@ -9,15 +9,10 @@
   --color-good: #34d399;    /* savings, export */
   --color-card: #0a0e18;
   --color-ink: #04060c;     /* page background, text on bright buttons */
+  --color-fg: #eef1f8;      /* main text */
   --color-muted: #9aa3b5;
   --color-dim: #707a8e;
-}
-
-:root {
-  --text: #eef1f8;
-  --aurora1: rgba(90, 120, 180, 0.2);
-  --aurora2: rgba(90, 140, 255, 0.18);
-  font-family: "Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-be-vietnam), "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
 [hidden] { display: none !important; }
@@ -29,19 +24,22 @@ html {
   min-height: 100%;
 }
 body {
-  color: var(--text);
+  color: var(--color-fg);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
 .fa-solid { vertical-align: -0.05em; }
 
+/* Status dot in the top bar */
+@keyframes status-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
 /* ---------- Aurora glow behind the content ---------- */
 .aurora {
   position: fixed; left: -20%; top: -14%; width: 140%; height: 52%;
   background:
-    radial-gradient(50% 60% at 50% 40%, var(--aurora1), transparent 70%),
-    radial-gradient(40% 50% at 30% 60%, var(--aurora2), transparent 70%);
+    radial-gradient(50% 60% at 50% 40%, rgba(90, 120, 180, 0.2), transparent 70%),
+    radial-gradient(40% 50% at 30% 60%, rgba(90, 140, 255, 0.18), transparent 70%);
   filter: blur(30px);
   animation: auroraShift 9s ease-in-out infinite;
   pointer-events: none;
@@ -54,86 +52,6 @@ body {
 }
 @media (prefers-reduced-motion: reduce) { .aurora { animation: none !important; } }
 
-/* ---------- App frame ---------- */
-.app {
-  position: relative;
-  z-index: 1;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 32px 28px 56px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
 /* Components size text in fixed px, so the large text modes zoom the whole app. */
 :root[data-fontscale="lg"] .app { zoom: 1.12; }
 :root[data-fontscale="xl"] .app { zoom: 1.26; }
-
-/* ---------- Top bar ---------- */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.meta { display: flex; align-items: center; gap: 8px; color: var(--color-muted); font-size: 13px; }
-.status, .badge {
-  display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 11px; font-weight: 600; color: var(--color-muted); white-space: nowrap;
-}
-.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-.dot--on { background: var(--color-good); box-shadow: 0 0 6px color-mix(in srgb, var(--color-good) 60%, transparent); animation: pulse 2s infinite; }
-.dot--off { background: var(--color-grid-in); box-shadow: 0 0 6px color-mix(in srgb, var(--color-grid-in) 55%, transparent); animation: pulse 1.3s infinite; }
-.dot--wait { background: var(--color-pv); box-shadow: 0 0 6px color-mix(in srgb, var(--color-pv) 50%, transparent); animation: pulse 2.4s infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-@media (prefers-reduced-motion: reduce) { .dot--on, .dot--off, .dot--wait { animation: none !important; } }
-
-.gear { background: none; border: none; color: var(--color-dim);
-  width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 15px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center; font-family: inherit;
-  transition: color 0.2s; }
-.gear:hover { color: var(--text); }
-
-/* ---------- Section nav (sticky on top, tab bar at the bottom on phones) ---------- */
-.nav { position: sticky; top: 0; z-index: 30; display: flex; gap: 2px; padding: 8px 0;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  background: none; border: none; color: var(--color-dim);
-  padding: 6px 4px; font-family: inherit; font-size: 10.5px; font-weight: 600;
-  cursor: pointer; white-space: nowrap; transition: color 0.2s; }
-.nav-btn:hover { color: var(--text); }
-.nav-btn.active { color: var(--text); font-weight: 700; }
-.nav-ico { position: relative; width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center;
-  justify-content: center; font-size: 15px; line-height: 1; border: 1px solid transparent;
-  transition: background 0.2s, border-color 0.2s; }
-.nav-btn.active .nav-ico { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.16); }
-.nav-btn.active .nav-lbl { font-weight: 700; }
-.nav-dot { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%;
-  background: var(--color-grid-in); border: 2px solid var(--color-ink); }
-
-/* ---------- Stale data / lost connection bar ---------- */
-.stale { display: flex; align-items: center; padding: 9px 14px; border-radius: 12px;
-  background: color-mix(in srgb, var(--color-grid-in) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-grid-in) 50%, transparent); color: var(--color-grid-in); font-size: 13px; font-weight: 600; }
-.stale > * + * { margin-left: 9px; }
-.stale-ico { font-size: 16px; flex-shrink: 0; }
-
-/* ---------- Phones ---------- */
-/* No viewport-fit=cover, so a standalone PWA already clears the home indicator; env() is a fallback. */
-@media (max-width: 640px) {
-  .nav {
-    position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 50;
-    padding: 10px 18px calc(12px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(180deg, transparent, rgba(4, 6, 12, 0.9) 34%);
-    -webkit-backdrop-filter: none; backdrop-filter: none;
-  }
-  .app { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  .meta { justify-content: flex-end; }
-}
-
-/* Must stay after the 640px block: this padding shorthand overrides it and keeps room for the fixed nav. */
-@media (max-width: 480px) {
-  .app {
-    padding: 24px 20px calc(88px + env(safe-area-inset-bottom, 0px));
-    gap: 24px;
-  }
-  .topbar { flex-wrap: nowrap; }
-  .meta { gap: 6px; font-size: 11px; flex-shrink: 0; }
-  .badge { display: none; }
-}
