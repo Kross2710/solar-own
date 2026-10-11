@@ -13,7 +13,7 @@ import { useState } from "react";
 import { apiUrl, fetcher } from "@/lib/api";
 import { COLORS } from "@/lib/colors";
 import { energyState } from "@/lib/energyState";
-import { MetricsResponse } from "@/lib/types";
+import { DailyResponse, MetricsResponse } from "@/lib/types";
 
 type PowerTab = "Power" | "Battery";
 
@@ -61,6 +61,10 @@ export default function Dashboard() {
     }
   );
 
+  const { data: dailyData } = useSWR<DailyResponse[]>(apiUrl("/api/daily?days=31"), fetcher, {
+    refreshInterval: 10 * 60 * 1000,
+  });
+
   if (isLoading && !data) {
     return (
       <DashboardShell status="connecting">
@@ -102,6 +106,7 @@ export default function Dashboard() {
     battSoc,
   });
   const reservePercent = data?.battery_reserve_percent ?? 20;
+  const selfPowered = selfPoweredBaseline(dailyData);
 
   return (
     <DashboardShell status={data?.status} source={data?.source} updatedAt={data?.timestamp}>
@@ -127,6 +132,9 @@ export default function Dashboard() {
           solarState={solarState}
         />
       </Card>
+
+      <TodayCard metrics={data} />
+
       <Card pad="p-6 sm:p-8" id="usageCard">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-bold text-zinc-100">Today&apos;s usage</h2>
@@ -175,12 +183,21 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <p className="mt-4 text-center text-[11px] leading-snug text-zinc-500">
+        {selfPowered && (
+          <p className="mt-4 text-center text-[12px] tabular-nums text-zinc-400">
+            {selfPowered.yesterday != null && (
+              <>
+                Yesterday <strong className="font-semibold text-zinc-200">{selfPowered.yesterday}%</strong>
+                <span className="text-zinc-600"> · </span>
+              </>
+            )}
+            30-day avg <strong className="font-semibold text-zinc-200">{selfPowered.avg}%</strong>
+          </p>
+        )}
+        <p className="mt-2 text-center text-[11px] leading-snug text-zinc-500">
           Solar + battery is energy not bought from the grid (estimate).
         </p>
       </Card>
-
-      {data && <TodayCard metrics={data} />}
 
       <div className="mt-4">
         <DetailsButton
@@ -233,12 +250,28 @@ export default function Dashboard() {
   );
 }
 
+function selfPoweredPct(day: DailyResponse): number | null {
+  if (!day.cons || day.buy == null) return null;
+  return Math.round(((day.cons - day.buy) / day.cons) * 100);
+}
+
+// The last row is today (still running), so it is left out of the comparison.
+function selfPoweredBaseline(daily: DailyResponse[] | undefined) {
+  if (!daily || daily.length < 2) return null;
+  const past = daily.slice(0, -1).map(selfPoweredPct).filter((pct): pct is number => pct != null);
+  if (!past.length) return null;
+  return {
+    yesterday: selfPoweredPct(daily[daily.length - 2]),
+    avg: Math.round(past.reduce((sum, pct) => sum + pct, 0) / past.length),
+  };
+}
+
 function OverviewSkeleton() {
   return (
     <div className="flex flex-col gap-7" aria-hidden="true">
       <Card pad="" className="h-72 animate-pulse" />
+      <Card pad="" className="h-64 animate-pulse" />
       <Card pad="" className="h-44 animate-pulse" />
-      <Card pad="" className="h-28 animate-pulse" />
     </div>
   );
 }

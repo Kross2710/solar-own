@@ -76,6 +76,65 @@ export function batteryPlan(metrics: MetricsResponse | undefined, needKwh: numbe
   };
 }
 
+// Below this the battery is treated as idle (inverter standby draw).
+const BATTERY_IDLE_W = 50;
+// Charge that would finish after this hour is too slow to count as "full today".
+const SUN_LAST_HOUR = 18;
+const RUNTIME_CAP_MIN = 12 * 60;
+const ROUND_MIN = 10;
+
+export interface BatteryOutlook {
+  title: string;
+  detail: string;
+}
+
+function clockIn(now: Date, minutes: number): Date {
+  const at = new Date(now.getTime() + minutes * 60_000);
+  at.setMinutes(Math.round(at.getMinutes() / ROUND_MIN) * ROUND_MIN, 0, 0);
+  return at;
+}
+
+function fmtClock(at: Date): string {
+  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+}
+
+// How long the battery lasts at the current load, or when it will be full.
+export function batteryOutlook(metrics: MetricsResponse | undefined, now: Date): BatteryOutlook | null {
+  const soc = metrics?.battery_soc;
+  const capacity = metrics?.battery_capacity_kwh;
+  if (soc == null || !capacity) return null;
+
+  const reserve = metrics?.battery_reserve_percent ?? DEFAULT_RESERVE_PCT;
+  const usableKwh = ((soc - reserve) / 100) * capacity;
+  const battKw = (metrics?.battery_power_w ?? 0) / 1000;
+
+  if (battKw * 1000 < -BATTERY_IDLE_W) {
+    if (usableKwh <= 0) return { title: `Battery at reserve · ${soc}%`, detail: "the home runs on the grid now" };
+    const minutes = (usableKwh / -battKw) * 60;
+    if (minutes > RUNTIME_CAP_MIN) return { title: "Battery lasts 12h+", detail: `${soc}% at this load` };
+    const rounded = Math.max(ROUND_MIN, Math.round(minutes / ROUND_MIN) * ROUND_MIN);
+    return {
+      title: `Battery lasts ~${fmtDuration(rounded)}`,
+      detail: `reaches ${reserve}% around ${fmtClock(clockIn(now, minutes))} at this load`,
+    };
+  }
+
+  if (battKw * 1000 > BATTERY_IDLE_W) {
+    const minutes = (((100 - soc) / 100) * capacity / battKw) * 60;
+    const fullAt = clockIn(now, minutes);
+    if (fullAt.getDate() !== now.getDate() || fullAt.getHours() >= SUN_LAST_HOUR) {
+      return { title: `Charging · ${soc}%`, detail: `${battKw.toFixed(1)} kW — too slow to fill today` };
+    }
+    return { title: `Full around ${fmtClock(fullAt)}`, detail: `charging ${battKw.toFixed(1)} kW · ${soc}% now` };
+  }
+
+  if (soc >= BATTERY_FULL_PCT) return { title: `Battery full · ${soc}%`, detail: "idle" };
+  return {
+    title: `Battery ${soc}%`,
+    detail: usableKwh > 0 ? `idle · ${usableKwh.toFixed(1)} kWh above the ${reserve}% reserve` : "idle at the reserve",
+  };
+}
+
 export function planAdvice(kind: DayKind | null, enough: boolean | null): string {
   if (!kind) return "Waiting for tomorrow's forecast to suggest tonight's battery plan…";
   if (enough === false) {
@@ -178,7 +237,7 @@ export function buildSuggestions({
       icon: "fa-plug-circle-xmark",
       tone: "warn",
       title: "Avoid 21:00–23:00",
-      detail: `battery running low — each kWh then costs tier ${tierNumber} price`,
+      detail: `once the battery runs out, grid power costs tier ${tierNumber} price`,
       when: "21–23h",
       isNow: hour >= 21 && hour < 23,
       value: `${fmtMoney(price)}/kWh`,
