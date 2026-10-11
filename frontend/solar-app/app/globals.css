@@ -34,6 +34,19 @@ body {
 /* Status dot in the top bar */
 @keyframes status-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
+/* Living house scene (components/house). Lengths are svg user units. */
+/* Light pulse along a power cable; the travel matches one dash period in flow.tsx. */
+@keyframes flow-pulse { to { stroke-dashoffset: -60; } }
+@keyframes soft-pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
+@keyframes flash-once { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ring-out { from { transform: scale(0.6); opacity: 0.9; } to { transform: scale(3.2); opacity: 0; } }
+@keyframes sparkle {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  30% { transform: scale(1.2) rotate(45deg); opacity: 1; }
+  100% { transform: scale(0) rotate(90deg); opacity: 0; }
+}
+@keyframes pop-in { from { transform: translateY(4px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+
 /* ---------- Aurora glow behind the content ---------- */
 .aurora {
   position: fixed; left: -20%; top: -14%; width: 140%; height: 52%;

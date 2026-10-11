@@ -1,18 +1,18 @@
 "use client";
 
 import useSWR from "swr";
-import IsometricHouse from "../IsometricHouse";
 import DashboardShell from "../DashboardShell";
 import OverviewTimeChart, {
   PowerHistoryPoint,
 } from "../OverviewTimeChart";
 import Card from "@/components/Card";
+import LivingHouse from "@/components/house/LivingHouse";
+import { useHouseScene } from "@/components/house/useHouseScene";
 import TodayCard from "@/components/overview/TodayCard";
 import { useState } from "react";
 
 import { apiUrl, fetcher } from "@/lib/api";
 import { COLORS } from "@/lib/colors";
-import { energyState } from "@/lib/energyState";
 import { DailyResponse, MetricsResponse } from "@/lib/types";
 
 type PowerTab = "Power" | "Battery";
@@ -85,10 +85,6 @@ export default function Dashboard() {
   }
 
   // Chuyển đổi chỉ số hiển thị
-  const pvWatt = data?.pv_power_w ?? 0;
-  const houseWatt = data?.load_power_w ?? 0;
-  const gridWatt = data?.grid_power_w ?? 0;
-  const battWatt = data?.battery_power_w ?? 0;
   const battSoc = data?.battery_soc ?? 0;
   const today_consumption_kwh = data?.today_consumption_kwh ?? 0;
   const today_energy_kwh = data?.today_energy_kwh ?? 0;
@@ -98,13 +94,6 @@ export default function Dashboard() {
   const solar_battery_consumption_percent = today_consumption_kwh ? (solar_battery_consumption / today_consumption_kwh) * 100 : 0;
   const grid_consumption_percent = today_consumption_kwh ? (today_buy_kwh / today_consumption_kwh) * 100 : 0;
   const solarUsagePercent = Math.min(100, Math.max(0, solar_battery_consumption_percent));
-  const solarState = energyState({
-    pvWatt,
-    houseWatt,
-    gridWatt,
-    battWatt,
-    battSoc,
-  });
   const reservePercent = data?.battery_reserve_percent ?? 20;
   const selfPowered = selfPoweredBaseline(dailyData);
 
@@ -122,15 +111,8 @@ export default function Dashboard() {
         <span id="staleText">{data?.error}</span>
       </div>
 
-      <Card pad="px-3 py-3 sm:px-8 sm:py-10" className="relative">
-        <IsometricHouse
-          pvWatt={(pvWatt)}
-          houseWatt={houseWatt}
-          battWatt={battWatt}
-          gridWatt={gridWatt}
-          battSoc={battSoc}
-          solarState={solarState}
-        />
+      <Card pad="px-3 py-3 sm:px-6 sm:py-6">
+        <HouseScene metrics={data} />
       </Card>
 
       <TodayCard metrics={data} />
@@ -248,6 +230,10 @@ export default function Dashboard() {
 
     </DashboardShell>
   );
+}
+
+function HouseScene({ metrics }: { metrics: MetricsResponse }) {
+  return <LivingHouse scene={useHouseScene(metrics)} />;
 }
 
 function selfPoweredPct(day: DailyResponse): number | null {
