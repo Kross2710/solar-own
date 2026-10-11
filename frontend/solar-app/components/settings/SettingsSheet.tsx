@@ -78,7 +78,7 @@ function ReserveControl({ saved }: { saved: number }) {
         >
           <i className="fa-solid fa-minus" />
         </button>
-        <output aria-live="polite" className="min-w-16 text-center text-[24px] font-light tabular-nums text-[#b8a6ff]">
+        <output aria-live="polite" className="min-w-16 text-center text-[24px] font-light tabular-nums text-batt">
           {value}%
         </output>
         <button
@@ -92,7 +92,7 @@ function ReserveControl({ saved }: { saved: number }) {
         </button>
         {dirty && (
           <button
-            className="ml-auto rounded-full bg-[#ffc76b] px-4 py-2 text-[13px] font-semibold text-[#04060c] disabled:opacity-60"
+            className="ml-auto rounded-full bg-pv px-4 py-2 text-[13px] font-semibold text-ink disabled:opacity-60"
             disabled={state === "saving"}
             onClick={save}
             type="button"
@@ -101,7 +101,7 @@ function ReserveControl({ saved }: { saved: number }) {
           </button>
         )}
       </div>
-      {state === "error" && <p className="text-[12px] text-[#fb8a95]">Couldn&apos;t save — try again.</p>}
+      {state === "error" && <p className="text-[12px] text-grid-in">Couldn&apos;t save — try again.</p>}
     </div>
   );
 }
@@ -129,7 +129,7 @@ function DataControls({ active }: { active: boolean }) {
     <div className="flex flex-col gap-3">
       <p className="text-[12px] text-zinc-400" role="status">
         {summary}
-        {message && <span className="block text-[#ffc76b]">{message}</span>}
+        {message && <span className="block text-pv">{message}</span>}
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -156,7 +156,7 @@ function DataControls({ active }: { active: boolean }) {
 
 function SystemList({ active }: { active: boolean }) {
   const { data: status, error } = useStatus(active);
-  if (error) return <p className="text-[12px] text-[#fb8a95]">Couldn&apos;t load the system status from the backend.</p>;
+  if (error) return <p className="text-[12px] text-grid-in">Couldn&apos;t load the system status from the backend.</p>;
   if (!status) return <p className="text-[12px] text-zinc-500">Loading…</p>;
 
   const rows: [string, string][] = [

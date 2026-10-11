@@ -4,12 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { buildSuggestions, dayKind, lockedQual, tomorrowOf } from "@/app/optimization/optimization.helpers";
 import { useMoney } from "@/hooks/useMoney";
+import Card from "@/components/Card";
 import { useForecast } from "@/hooks/useOptimization";
 import { fmtMoneyShort } from "@/lib/format";
 import { MetricsResponse } from "@/lib/types";
-
-const cardClass =
-  "rounded-[22px] border border-white/10 bg-[#0a0e18]/90 p-4 shadow-2xl backdrop-blur-xl sm:p-5";
 
 function useHour(): number {
   const [hour, setHour] = useState(() => new Date().getHours());
@@ -35,14 +33,14 @@ export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
   const saved = money?.today.saved;
 
   return (
-    <section className={cardClass} aria-labelledby="today-actions">
+    <Card pad="p-4 sm:p-5" aria-labelledby="today-actions">
       <h2 className="text-sm font-bold text-zinc-100" id="today-actions">
         Today
       </h2>
       <ul className="mt-3 divide-y divide-white/5">
         <li>
           <Link className="flex items-center gap-3 py-2.5 transition hover:text-zinc-50" href="/money">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300 ring-1 ring-inset ring-emerald-400/30">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-good/10 text-good ring-1 ring-inset ring-good/30">
               <i className="fa-solid fa-coins" />
             </span>
             <span className="min-w-0 flex-1">
@@ -60,7 +58,7 @@ export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
         </li>
         <li>
           <Link className="flex items-center gap-3 py-2.5 transition hover:text-zinc-50" href="/optimization">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/10 text-sky-300 ring-1 ring-inset ring-sky-300/30">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-load/10 text-load ring-1 ring-inset ring-load/30">
               <i className={`fa-solid ${suggestion?.icon ?? "fa-lightbulb"}`} />
             </span>
             <span className="min-w-0 flex-1">
@@ -75,6 +73,6 @@ export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
           </Link>
         </li>
       </ul>
-    </section>
+    </Card>
   );
 }

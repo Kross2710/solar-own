@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
+import Card from "@/components/Card";
 import DashboardShell from "@/components/DashboardShell";
 import HistoryChart, { Range, ChartBarData } from "../../components/HistoryChart";
 import HistoryStatGrid from "../../components/HistoryStatGrid";
@@ -60,7 +61,7 @@ export default function HistoryPage() {
 
   if (dailyLoading || summaryLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-zinc-400">
         Connecting to Solar...
       </div>
     );
@@ -68,7 +69,7 @@ export default function HistoryPage() {
 
   if (dailyError || summaryError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-red-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
         Can&apos;t get data from Backend
       </div>
     );
@@ -122,20 +123,20 @@ export default function HistoryPage() {
         <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="month-generation">
           This Month
         </p>
-        <p className="mt-2 bg-gradient-to-b from-white to-[#ffc76b] bg-clip-text text-[clamp(52px,14vw,68px)] font-extralight leading-none tracking-[-0.055em] text-transparent tabular-nums">
+        <p className="mt-2 bg-gradient-to-b from-white to-pv bg-clip-text text-[clamp(52px,14vw,68px)] font-extralight leading-none tracking-[-0.055em] text-transparent tabular-nums">
           {totalSolarThisMonth} kWh
         </p>
         <p className="mt-2 text-[13px] text-zinc-300">
-          saved <strong className="text-emerald-400">{totalSavedThisMonth}</strong> (used {totalUsedFromSolar} kWh)
+          saved <strong className="text-good">{totalSavedThisMonth}</strong> (used {totalUsedFromSolar} kWh)
           {/* <span className="text-zinc-500"> · </span>
           home self-powered 72% */}
         </p>
       </section>
 
-      <section className="rounded-[22px] border border-white/10 border-t-amber-300/20 bg-[#0a0e18]/90 p-3 shadow-2xl backdrop-blur-xl sm:p-4">
+      <Card accent="pv">
         <HistoryChart range={range} onRangeChange={setRange} data={activeBars} />
         <HistoryStatGrid items={statItems} />
-      </section>
+      </Card>
 
       <SelfPoweredCard selfPoweredDays={selfPoweredDays} selfPoweredDates={selfPoweredDates} avgSelfPowered={avgSelfPowered} />
     </DashboardShell>

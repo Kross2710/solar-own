@@ -6,15 +6,14 @@ import DashboardShell from "../DashboardShell";
 import OverviewTimeChart, {
   PowerHistoryPoint,
 } from "../OverviewTimeChart";
+import Card from "@/components/Card";
 import TodayCard from "@/components/overview/TodayCard";
 import { useState } from "react";
 
 import { apiUrl, fetcher } from "@/lib/api";
+import { COLORS } from "@/lib/colors";
 import { energyState } from "@/lib/energyState";
 import { MetricsResponse } from "@/lib/types";
-
-const cardClass =
-  "rounded-[22px] border border-white/10 bg-[#0a0e18]/90 shadow-2xl backdrop-blur-xl";
 
 type PowerTab = "Power" | "Battery";
 
@@ -73,13 +72,10 @@ export default function Dashboard() {
   if (error || !data) {
     return (
       <DashboardShell status="error">
-        <section
-          className={`${cardClass} border-t-rose-300/30 p-6 text-center`}
-          role="alert"
-        >
-          <p className="text-sm font-semibold text-rose-300">Can&apos;t get data from the backend</p>
+        <Card accent="warn" pad="p-6" className="text-center" role="alert">
+          <p className="text-sm font-semibold text-grid-in">Can&apos;t get data from the backend</p>
           <p className="mt-1 text-[12px] text-zinc-400">The rest of the app stays available from the tabs below.</p>
-        </section>
+        </Card>
       </DashboardShell>
     );
   }
@@ -117,7 +113,7 @@ export default function Dashboard() {
         <span className="stale-text" id="staleText">{data?.error}</span>
       </div>
 
-      <section className="relative px-3 py-3 sm:px-8 sm:py-10 rounded-[22px] bg-[#0a0e18]/90 border border-white/10 backdrop-blur-xl shadow-2xl">
+      <Card pad="px-3 py-3 sm:px-8 sm:py-10" className="relative">
         <IsometricHouse
           pvWatt={(pvWatt)}
           houseWatt={houseWatt}
@@ -126,11 +122,8 @@ export default function Dashboard() {
           battSoc={battSoc}
           solarState={solarState}
         />
-      </section>
-      <section
-        className="rounded-[22px] border border-white/10 bg-[#0a0e18]/90 p-6 shadow-2xl backdrop-blur-xl sm:p-8"
-        id="usageCard"
-      >
+      </Card>
+      <Card pad="p-6 sm:p-8" id="usageCard">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-bold text-zinc-100">Today&apos;s usage</h2>
           <span className="text-[11px] tabular-nums text-zinc-400" id="usagePvGen">
@@ -141,11 +134,11 @@ export default function Dashboard() {
         <div className="mt-5 grid grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[1fr_8rem_1fr] sm:gap-4">
           <div className="flex min-w-0 flex-col">
             <div className="text-[11px] text-zinc-400">Solar + battery</div>
-            <div className="mt-1 whitespace-nowrap text-xl font-light tracking-tight tabular-nums text-amber-200">
+            <div className="mt-1 whitespace-nowrap text-xl font-light tracking-tight tabular-nums text-pv">
               <span id="usagePvKwh">{solar_battery_consumption.toFixed(1)}</span>
               <small className="ml-1 text-[10px] font-semibold tracking-normal text-zinc-400">kWh</small>
             </div>
-            <div className="mt-0.5 text-sm font-bold tabular-nums text-amber-300" id="usagePvPct">
+            <div className="mt-0.5 text-sm font-bold tabular-nums text-pv" id="usagePvPct">
               {solarUsagePercent.toFixed(0)}%
             </div>
           </div>
@@ -154,11 +147,11 @@ export default function Dashboard() {
             <div
               className="absolute inset-0 rounded-full"
               style={{
-                background: `conic-gradient(#ffc76b 0 ${solarUsagePercent}%, #7dd3fc ${solarUsagePercent}% 100%)`,
+                background: `conic-gradient(${COLORS.pv} 0 ${solarUsagePercent}%, ${COLORS.load} ${solarUsagePercent}% 100%)`,
               }}
               aria-hidden="true"
             />
-            <div className="absolute inset-3 rounded-full border border-white/5 bg-[#0a0e18]" />
+            <div className="absolute inset-3 rounded-full border border-white/5 bg-card" />
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
               <span className="text-lg font-light tracking-tight tabular-nums text-zinc-100" id="usageTotalKwh">
                 {today_consumption_kwh}
@@ -169,11 +162,11 @@ export default function Dashboard() {
 
           <div className="flex min-w-0 flex-col text-right">
             <div className="text-[11px] text-zinc-400">Grid</div>
-            <div className="mt-1 whitespace-nowrap text-xl font-light tracking-tight tabular-nums text-sky-200">
+            <div className="mt-1 whitespace-nowrap text-xl font-light tracking-tight tabular-nums text-load">
               <span id="usageGridKwh">{today_buy_kwh}</span>
               <small className="ml-1 text-[10px] font-semibold tracking-normal text-zinc-400">kWh</small>
             </div>
-            <div className="mt-0.5 text-sm font-bold tabular-nums text-sky-300" id="usageGridPct">
+            <div className="mt-0.5 text-sm font-bold tabular-nums text-load" id="usageGridPct">
               {grid_consumption_percent.toFixed(0)}%
             </div>
           </div>
@@ -181,7 +174,7 @@ export default function Dashboard() {
         <p className="mt-4 text-center text-[11px] leading-snug text-zinc-500">
           Solar + battery is energy not bought from the grid (estimate).
         </p>
-      </section>
+      </Card>
 
       {data && <TodayCard metrics={data} />}
 
@@ -193,14 +186,14 @@ export default function Dashboard() {
       </div>
 
       {detailOpen && (
-        <section className={`${cardClass} border-t-amber-300/20 p-3 sm:p-4`}>
+        <Card accent="pv">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-zinc-100">
                 {powerTab === "Power" ? "Power over time" : "Battery level today"}
               </h2>
               {powerTab === "Battery" && (
-                <span className="mt-1 block text-[11px] font-semibold tabular-nums text-purple-300">
+                <span className="mt-1 block text-[11px] font-semibold tabular-nums text-batt">
                   Current SOC · {battSoc}%
                 </span>
               )}
@@ -229,7 +222,7 @@ export default function Dashboard() {
               reservePercent={reservePercent}
             />
           </div>
-        </section>
+        </Card>
       )}
 
     </DashboardShell>
@@ -239,9 +232,9 @@ export default function Dashboard() {
 function OverviewSkeleton() {
   return (
     <div className="flex flex-col gap-7" aria-hidden="true">
-      <div className={`${cardClass} h-72 animate-pulse`} />
-      <div className={`${cardClass} h-44 animate-pulse`} />
-      <div className={`${cardClass} h-28 animate-pulse`} />
+      <Card pad="" className="h-72 animate-pulse" />
+      <Card pad="" className="h-44 animate-pulse" />
+      <Card pad="" className="h-28 animate-pulse" />
     </div>
   );
 }

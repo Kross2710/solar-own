@@ -33,9 +33,9 @@ export function energyState({ pvWatt, houseWatt, gridWatt, battWatt, battSoc }: 
 }
 
 export function energyStateClass(state: string): string {
-  if (state === "Grid import") return "text-rose-300";
-  if (state === "Exporting" || state === "Fully charged") return "text-emerald-300";
-  if (state === "Battery → home") return "text-purple-300";
+  if (state === "Grid import") return "text-grid-in";
+  if (state === "Exporting" || state === "Fully charged") return "text-good";
+  if (state === "Battery → home") return "text-batt";
   if (state === "Idle") return "text-zinc-400";
-  return "text-amber-300";
+  return "text-pv";
 }

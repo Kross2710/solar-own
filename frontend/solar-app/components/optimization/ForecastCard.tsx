@@ -5,6 +5,7 @@ import {
   weatherIcon,
 } from "@/app/optimization/optimization.helpers";
 import { ForecastDay } from "@/lib/types/optimization";
+import Card from "@/components/Card";
 
 const DAYS_SHOWN = 5;
 const BAR_MAX_PX = 44;
@@ -30,8 +31,8 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
       : "weather-based forecast";
 
   return (
-    <section
-      className="rounded-[22px] border border-white/10 border-t-amber-300/20 bg-[#0a0e18]/90 p-3 shadow-2xl backdrop-blur-xl sm:p-4"
+    <Card
+      accent="pv"
       aria-labelledby="next-days"
     >
       <div className="flex items-baseline justify-between gap-3">
@@ -64,7 +65,7 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
                   />
                 )}
                 <span
-                  className="mt-auto w-3 rounded-t-[3px] bg-gradient-to-t from-[#ffc76b]/40 to-[#ffc76b]"
+                  className="mt-auto w-3 rounded-t-[3px] bg-gradient-to-t from-pv/40 to-pv"
                   style={{ height: barPx }}
                   aria-hidden="true"
                 />
@@ -77,7 +78,7 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
               <p className="text-[10px] tabular-nums text-zinc-500">
                 {day.tmax != null ? `${Math.round(day.tmax)}°` : "–"}/{day.tmin != null ? `${Math.round(day.tmin)}°` : "–"}
               </p>
-              <p className="h-4 text-[10px] tabular-nums text-[#7dd3fc]">
+              <p className="h-4 text-[10px] tabular-nums text-load">
                 {day.rain_prob != null && day.rain_prob >= RAIN_SHOWN_FROM_PCT && (
                   <>
                     <i className="fa-solid fa-umbrella mr-0.5" />
@@ -96,6 +97,6 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
           30-day average {Math.round(avg30)} kWh
         </p>
       )}
-    </section>
+    </Card>
   );
 }

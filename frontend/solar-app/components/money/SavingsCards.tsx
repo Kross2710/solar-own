@@ -14,7 +14,7 @@ const cardClass = "rounded-xl border border-white/10 bg-black/10 p-3";
 function ProgressBar({ pct }: { pct: number }) {
   return (
     <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/10">
-      <span className="block h-full rounded-full bg-[#34d399]" style={{ width: `${clampPct(pct)}%` }} />
+      <span className="block h-full rounded-full bg-good" style={{ width: `${clampPct(pct)}%` }} />
     </div>
   );
 }
@@ -25,7 +25,7 @@ function TodayCard({ today }: { today: MoneyToday }) {
   return (
     <article className={cardClass}>
       <p className="text-[11px] text-zinc-400">Today</p>
-      <p className="mt-1 text-lg font-bold leading-none tabular-nums text-emerald-400">
+      <p className="mt-1 text-lg font-bold leading-none tabular-nums text-good">
         {hasData ? `+${fmtMoneyShort(today.saved)}` : "—"}
       </p>
       <p className="mt-1 text-[11px] leading-snug text-zinc-400">

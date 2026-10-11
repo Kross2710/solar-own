@@ -14,7 +14,7 @@ export default function SavingsHero({ cycle }: { cycle: MoneyCycle }) {
       <p className="mt-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="cycle-savings">
         Saved This Cycle
       </p>
-      <p className="mt-2 bg-gradient-to-b from-white to-[#34d399] bg-clip-text text-[clamp(52px,14vw,68px)] font-extralight leading-none tracking-[-0.055em] text-transparent tabular-nums">
+      <p className="mt-2 bg-gradient-to-b from-white to-good bg-clip-text text-[clamp(52px,14vw,68px)] font-extralight leading-none tracking-[-0.055em] text-transparent tabular-nums">
         {fmtMoneyShort(cycle.saved_now)}
       </p>
 
@@ -25,23 +25,23 @@ export default function SavingsHero({ cycle }: { cycle: MoneyCycle }) {
             role="img"
             aria-label={`Solar covered ${sharePct}% of your bill`}
           >
-            <span className="h-full bg-[#34d399]" style={{ width: `${sharePct}%` }} />
-            <span className="h-full flex-1 bg-[#fb8a95]/70" />
+            <span className="h-full bg-good" style={{ width: `${sharePct}%` }} />
+            <span className="h-full flex-1 bg-grid-in/70" />
           </div>
 
           <div className="mt-2 flex justify-between text-[11px] tabular-nums">
             <span className="text-zinc-400">
-              <span className="mr-1.5 inline-block size-2 rounded-full bg-[#34d399]" />
+              <span className="mr-1.5 inline-block size-2 rounded-full bg-good" />
               Saved {fmtMoneyShort(cycle.saved_now)}
             </span>
             <span className="text-zinc-400">
-              <span className="mr-1.5 inline-block size-2 rounded-full bg-[#fb8a95]" />
+              <span className="mr-1.5 inline-block size-2 rounded-full bg-grid-in" />
               Paid EVN {fmtMoneyShort(cycle.bill_now)}
             </span>
           </div>
 
           <p className="mt-3 text-[13px] text-zinc-300">
-            Solar covered <strong className="text-emerald-400">{sharePct}%</strong> of your bill
+            Solar covered <strong className="text-good">{sharePct}%</strong> of your bill
           </p>
         </div>
       )}

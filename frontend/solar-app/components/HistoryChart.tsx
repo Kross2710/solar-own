@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type ApexCharts from "apexcharts";
 import type { ApexOptions } from "apexcharts";
+import { COLORS } from "@/lib/colors";
 
 export type Range = "Day" | "Month" | "Year";
 
@@ -59,7 +60,7 @@ export default function HistoryChart({ range, onRangeChange, data }: HistoryChar
             data: data.map((item) => item.solar),
           },
         ],
-        colors: ["#446078", "#ffc76b"],
+        colors: ["#446078", COLORS.pv],
         plotOptions: {
           bar: {
             horizontal: false,
@@ -105,7 +106,7 @@ export default function HistoryChart({ range, onRangeChange, data }: HistoryChar
             trim: false,
             rotate: 0,
             style: {
-              colors: data.map(() => "#707a8e"),
+              colors: data.map(() => COLORS.dim),
               fontSize: "10px",
             },
           },
@@ -117,7 +118,7 @@ export default function HistoryChart({ range, onRangeChange, data }: HistoryChar
           labels: {
             formatter: (value: number) => Math.round(value).toString(),
             style: {
-              colors: ["#707a8e"],
+              colors: [COLORS.dim],
               fontSize: "11px",
             },
           },
@@ -127,7 +128,7 @@ export default function HistoryChart({ range, onRangeChange, data }: HistoryChar
           position: "bottom",
           horizontalAlign: "center",
           fontSize: "11px",
-          labels: { colors: "#9aa3b5" },
+          labels: { colors: COLORS.muted },
           itemMargin: { horizontal: 10, vertical: 2 },
         },
         tooltip: {
@@ -143,7 +144,7 @@ export default function HistoryChart({ range, onRangeChange, data }: HistoryChar
           align: "center",
           verticalAlign: "middle",
           style: {
-            color: "#707a8e",
+            color: COLORS.dim,
             fontSize: "12px",
           },
         },

@@ -40,7 +40,7 @@ function ChatPanel({ metrics, notices, onDismissNotice }: ChatPanelProps) {
       <section aria-labelledby="chat-title" className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-zinc-100" id="chat-title">
-            <i className="fa-solid fa-robot mr-1.5 text-[#ffc76b]" />
+            <i className="fa-solid fa-robot mr-1.5 text-pv" />
             Ask the assistant
           </h2>
           {entries.length > 0 && (
@@ -84,7 +84,7 @@ export default function AssistantPage() {
 
   if (aiError && metricsError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-red-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
         Can&apos;t get data from Backend
       </div>
     );
@@ -98,7 +98,7 @@ export default function AssistantPage() {
         <>
           <NoticeList notices={notices} onDismiss={dismiss} />
           {ai && !ai.enabled && (
-            <section className="rounded-[22px] border border-white/10 bg-[#0a0e18]/90 p-4 text-[13px] leading-relaxed text-zinc-400">
+            <section className="rounded-[22px] border border-white/10 bg-card/90 p-4 text-[13px] leading-relaxed text-zinc-400">
               <p className="font-semibold text-zinc-200">
                 <i className="fa-solid fa-robot mr-1.5 text-zinc-500" />
                 The chat assistant is off

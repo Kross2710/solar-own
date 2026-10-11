@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/lib/colors";
 import { energyStateClass } from "@/lib/energyState";
 
 interface HouseProps {
@@ -49,46 +50,46 @@ export default function IsometricHouse({
 
                     {/* Đuôi comet */}
                     <linearGradient id="ctPv">
-                        <stop offset="0" stopColor="#ffc76b" stopOpacity="0" />
-                        <stop offset="1" stopColor="#ffc76b" stopOpacity=".85" />
+                        <stop offset="0" stopColor={COLORS.pv} stopOpacity="0" />
+                        <stop offset="1" stopColor={COLORS.pv} stopOpacity=".85" />
                     </linearGradient>
                     <linearGradient id="ctLoad">
-                        <stop offset="0" stopColor="#7dd3fc" stopOpacity="0" />
-                        <stop offset="1" stopColor="#7dd3fc" stopOpacity=".85" />
+                        <stop offset="0" stopColor={COLORS.load} stopOpacity="0" />
+                        <stop offset="1" stopColor={COLORS.load} stopOpacity=".85" />
                     </linearGradient>
                     <linearGradient id="ctBatt">
-                        <stop offset="0" stopColor="#b8a6ff" stopOpacity="0" />
-                        <stop offset="1" stopColor="#b8a6ff" stopOpacity=".85" />
+                        <stop offset="0" stopColor={COLORS.batt} stopOpacity="0" />
+                        <stop offset="1" stopColor={COLORS.batt} stopOpacity=".85" />
                     </linearGradient>
                     <linearGradient id="ctIn">
-                        <stop offset="0" stopColor="#fb8a95" stopOpacity="0" />
-                        <stop offset="1" stopColor="#fb8a95" stopOpacity=".85" />
+                        <stop offset="0" stopColor={COLORS.gridIn} stopOpacity="0" />
+                        <stop offset="1" stopColor={COLORS.gridIn} stopOpacity=".85" />
                     </linearGradient>
                     <linearGradient id="ctOut">
-                        <stop offset="0" stopColor="#34d399" stopOpacity="0" />
-                        <stop offset="1" stopColor="#34d399" stopOpacity=".85" />
+                        <stop offset="0" stopColor={COLORS.good} stopOpacity="0" />
+                        <stop offset="1" stopColor={COLORS.good} stopOpacity=".85" />
                     </linearGradient>
 
                     {/* Quầng sáng comet */}
                     <radialGradient id="hlPv">
-                        <stop offset="0" stopColor="#ffc76b" stopOpacity=".4" />
-                        <stop offset="100%" stopColor="#ffc76b" stopOpacity="0" />
+                        <stop offset="0" stopColor={COLORS.pv} stopOpacity=".4" />
+                        <stop offset="100%" stopColor={COLORS.pv} stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="hlLoad">
-                        <stop offset="0" stopColor="#7dd3fc" stopOpacity=".4" />
-                        <stop offset="100%" stopColor="#7dd3fc" stopOpacity="0" />
+                        <stop offset="0" stopColor={COLORS.load} stopOpacity=".4" />
+                        <stop offset="100%" stopColor={COLORS.load} stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="hlBatt">
-                        <stop offset="0" stopColor="#b8a6ff" stopOpacity=".4" />
-                        <stop offset="100%" stopColor="#b8a6ff" stopOpacity="0" />
+                        <stop offset="0" stopColor={COLORS.batt} stopOpacity=".4" />
+                        <stop offset="100%" stopColor={COLORS.batt} stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="hlIn">
-                        <stop offset="0" stopColor="#fb8a95" stopOpacity=".4" />
-                        <stop offset="100%" stopColor="#fb8a95" stopOpacity="0" />
+                        <stop offset="0" stopColor={COLORS.gridIn} stopOpacity=".4" />
+                        <stop offset="100%" stopColor={COLORS.gridIn} stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="hlOut">
-                        <stop offset="0" stopColor="#34d399" stopOpacity=".4" />
-                        <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
+                        <stop offset="0" stopColor={COLORS.good} stopOpacity=".4" />
+                        <stop offset="100%" stopColor={COLORS.good} stopOpacity="0" />
                     </radialGradient>
 
                     {/* Đường dẫn dòng chảy */}
@@ -144,7 +145,7 @@ export default function IsometricHouse({
                         y="0.06"
                         width="0.18"
                         height={0.58 * Math.max(0, Math.min(1, battSoc / 100))}
-                        fill={battSoc <= 20 ? "#ef4444" : battSoc <= 50 ? "#fbbf24" : "#34d399"}
+                        fill={battSoc <= 20 ? COLORS.gridIn : battSoc <= 50 ? COLORS.pv : COLORS.good}
                     />
                     <rect x="0.32" y="0.06" width="0.03" height="0.58" fill="rgba(0,0,0,.12)" />
                 </g>
@@ -161,7 +162,7 @@ export default function IsometricHouse({
                             <g key={idx}>
                                 <circle r="6.5" fill="url(#hlPv)" />
                                 <rect x="-11" y="-1.6" width="11" height="3.2" rx="1.6" fill="url(#ctPv)" />
-                                <circle r="2.3" fill="#ffc76b" />
+                                <circle r="2.3" fill={COLORS.pv} />
                                 <animateMotion dur="3s" begin={`${begin}s`} repeatCount="indefinite" rotate="auto">
                                     <mpath href="#hp1f" />
                                 </animateMotion>
@@ -177,7 +178,7 @@ export default function IsometricHouse({
                             <g key={idx}>
                                 <circle r="6.5" fill="url(#hlPv)" />
                                 <rect x="-11" y="-1.6" width="11" height="3.2" rx="1.6" fill="url(#ctPv)" />
-                                <circle r="2.3" fill="#ffc76b" />
+                                <circle r="2.3" fill={COLORS.pv} />
                                 <animateMotion dur="3s" begin={`${begin}s`} repeatCount="indefinite" rotate="auto">
                                     <mpath href="#hp1h" />
                                 </animateMotion>
@@ -193,7 +194,7 @@ export default function IsometricHouse({
                             <g key={idx}>
                                 <circle r="6.5" fill="url(#hlBatt)" />
                                 <rect x="-11" y="-1.6" width="11" height="3.2" rx="1.6" fill="url(#ctBatt)" />
-                                <circle r="2.3" fill="#b8a6ff" />
+                                <circle r="2.3" fill={COLORS.batt} />
                                 <animateMotion dur="1.5s" begin={`${begin}s`} repeatCount="indefinite" rotate="auto">
                                     <mpath href="#hp1r" />
                                 </animateMotion>
@@ -209,7 +210,7 @@ export default function IsometricHouse({
                             <g key={idx}>
                                 <circle r="6.5" fill="url(#hlLoad)" />
                                 <rect x="-11" y="-1.6" width="11" height="3.2" rx="1.6" fill="url(#ctLoad)" />
-                                <circle r="2.3" fill="#7dd3fc" />
+                                <circle r="2.3" fill={COLORS.load} />
                                 <animateMotion dur="1.6s" begin={`${begin}s`} repeatCount="indefinite" rotate="auto">
                                     <mpath href="#hp2f" />
                                 </animateMotion>
@@ -225,7 +226,7 @@ export default function IsometricHouse({
                             <g key={idx}>
                                 <circle r="6.5" fill="url(#hlIn)" />
                                 <rect x="-11" y="-1.6" width="11" height="3.2" rx="1.6" fill="url(#ctIn)" />
-                                <circle r="2.3" fill="#fb8a95" />
+                                <circle r="2.3" fill={COLORS.gridIn} />
                                 <animateMotion dur="2.7s" begin={`${begin}s`} repeatCount="indefinite" rotate="auto">
                                     <mpath href="#hp3r" />
                                 </animateMotion>
@@ -241,7 +242,7 @@ export default function IsometricHouse({
                             <g key={idx}>
                                 <circle r="6.5" fill="url(#hlOut)" />
                                 <rect x="-11" y="-1.6" width="11" height="3.2" rx="1.6" fill="url(#ctOut)" />
-                                <circle r="2.3" fill="#34d399" />
+                                <circle r="2.3" fill={COLORS.good} />
                                 <animateMotion dur="2.7s" begin={`${begin}s`} repeatCount="indefinite" rotate="auto">
                                     <mpath href="#hp3f" />
                                 </animateMotion>
@@ -255,23 +256,23 @@ export default function IsometricHouse({
 
             {/* 1. Solar Callout */}
             <div className="absolute left-[50.2%] top-2 -translate-x-1/2 text-center whitespace-nowrap z-10">
-                <div className="text-sm md:text-base font-bold text-amber-300 tabular-nums">{formatWatt(pvWatt)}</div>
+                <div className="text-sm md:text-base font-bold text-pv tabular-nums">{formatWatt(pvWatt)}</div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-400">Solar</div>
             </div>
             <div className="absolute left-[50.2%] top-[10.5%] h-[23%] w-px bg-white/20 -translate-x-1/2" />
 
             {/* 2. Home Callout */}
             <div className="absolute left-[74%] top-2 -translate-x-1/2 text-center whitespace-nowrap z-10">
-                <div className="text-sm md:text-base font-bold text-sky-300 tabular-nums">{formatWatt(houseWatt)}</div>
+                <div className="text-sm md:text-base font-bold text-load tabular-nums">{formatWatt(houseWatt)}</div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-400">Home</div>
             </div>
             <div className="absolute left-[74%] top-[10.5%] h-[38%] w-px bg-white/20 -translate-x-1/2" />
 
             {/* 3. Battery Callout */}
             <div className="absolute left-[38.1%] bottom-2 -translate-x-1/2 text-center whitespace-nowrap z-10">
-                <div className="text-sm md:text-base font-bold text-purple-300 tabular-nums">
+                <div className="text-sm md:text-base font-bold text-batt tabular-nums">
                     <span>{formatWatt(battWatt)}</span>
-                    {battSoc > 0 && <span className="text-purple-400 ml-1 text-xs">· {battSoc}%</span>}
+                    {battSoc > 0 && <span className="text-batt ml-1 text-xs">· {battSoc}%</span>}
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-400">Battery</div>
             </div>
@@ -279,7 +280,7 @@ export default function IsometricHouse({
 
             {/* 4. Grid Callout */}
             <div className={`absolute left-[83.3%] bottom-2 -translate-x-1/2 text-center whitespace-nowrap z-10 transition-opacity ${Math.abs(signedGridWatt) < 10 ? "opacity-50" : "opacity-100"}`}>
-                <div className={`text-sm md:text-base font-bold tabular-nums ${signedGridWatt > 10 ? "text-rose-300" : signedGridWatt < -10 ? "text-emerald-300" : "text-zinc-300"}`}>
+                <div className={`text-sm md:text-base font-bold tabular-nums ${signedGridWatt > 10 ? "text-grid-in" : signedGridWatt < -10 ? "text-good" : "text-zinc-300"}`}>
                     {formatWatt(gridWatt)}
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-400">

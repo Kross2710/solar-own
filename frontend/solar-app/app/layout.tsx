@@ -2,6 +2,7 @@
 
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { COLORS } from "@/lib/colors";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#04060c",
+  themeColor: COLORS.ink,
   width: "device-width",
   initialScale: 1,
 };
@@ -37,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-view="overview" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Load Font Awesome hoặc link CSS vendor nếu vẫn dùng file tĩnh */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />

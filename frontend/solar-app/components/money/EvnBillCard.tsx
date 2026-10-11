@@ -11,6 +11,7 @@ import {
 import BillHistoryChart from "@/components/money/BillHistoryChart";
 import DetailsDisclosure from "@/components/money/DetailsDisclosure";
 import { fmtMoney, fmtMoneyK, fmtMoneyShort, fmtNum, parseDateMonth } from "@/lib/format";
+import Card from "@/components/Card";
 import {
   MoneyCycle,
   MoneyEvnBill,
@@ -58,9 +59,9 @@ function ThisCycle({ cycle, prevCycle, lastBill }: {
       <div className={`relative mt-3 ${scale.lastBillPct != null ? "mb-5" : ""}`}>
         <div className="relative h-2 overflow-hidden rounded-full bg-white/5">
           {!tooEarly && (
-            <span className="absolute inset-y-0 left-0 rounded-full bg-[#fb8a95]/25" style={{ width: `${scale.projPct}%` }} />
+            <span className="absolute inset-y-0 left-0 rounded-full bg-grid-in/25" style={{ width: `${scale.projPct}%` }} />
           )}
-          <span className="absolute inset-y-0 left-0 rounded-full bg-[#fb8a95]" style={{ width: `${scale.nowPct}%` }} />
+          <span className="absolute inset-y-0 left-0 rounded-full bg-grid-in" style={{ width: `${scale.nowPct}%` }} />
         </div>
         {scale.lastBillPct != null && lastBill && (
           <>
@@ -83,7 +84,7 @@ function ThisCycle({ cycle, prevCycle, lastBill }: {
         <p className="mt-2 text-[11px] text-zinc-400">
           <span
             className={`mr-1.5 rounded-full px-2 py-0.5 font-bold tabular-nums ${
-              cheaper ? "bg-emerald-400/10 text-emerald-400" : "bg-[#fb8a95]/10 text-[#fb8a95]"
+              cheaper ? "bg-good/10 text-good" : "bg-grid-in/10 text-grid-in"
             }`}
           >
             {cheaper ? "▼" : "▲"} {fmtMoneyShort(Math.abs(prevCycle.bill_delta))}
@@ -114,7 +115,7 @@ function LastBill({ bill }: { bill: MoneyEvnBill }) {
       </div>
 
       {showCheck && (
-        <p className={`mt-2 text-[11px] ${matched ? "text-emerald-400" : "text-[#ffcaa6]"}`}>
+        <p className={`mt-2 text-[11px] ${matched ? "text-good" : "text-pv"}`}>
           <i className={`fa-solid ${matched ? "fa-circle-check" : "fa-circle-exclamation"} mr-1.5`} />
           {matched
             ? `Our estimate was within ${Math.abs(bill.diff_pct!)}% of this bill`
@@ -153,7 +154,7 @@ function BillBreakdown({ tier, cycle }: { tier: MoneyTier; cycle: MoneyCycle }) 
           <span className="text-zinc-400">Without solar</span>
           <strong className="text-zinc-400">{fmtMoney(withoutSolar)}</strong>
         </div>
-        <div className="flex justify-between text-emerald-400">
+        <div className="flex justify-between text-good">
           <span>Solar saved</span>
           <strong>{fmtMoney(cycle.saved_now)}</strong>
         </div>
@@ -172,7 +173,7 @@ function BillHistory({ history, solarStart }: { history: MoneyEvnHistoryItem[]; 
         <p className="mt-1 text-[11px] tabular-nums text-zinc-400">
           {cycleMonthYearLabel(yoy.before.cycle)} {fmtMoneyShort(yoy.before.amount)} →{" "}
           {cycleMonthYearLabel(yoy.after.cycle)} {fmtMoneyShort(yoy.after.amount)}{" "}
-          <strong className={yoy.changePct <= 0 ? "text-emerald-400" : "text-[#fb8a95]"}>
+          <strong className={yoy.changePct <= 0 ? "text-good" : "text-grid-in"}>
             {yoy.changePct > 0 ? "+" : ""}
             {yoy.changePct}%
           </strong>
@@ -187,13 +188,13 @@ function BillHistory({ history, solarStart }: { history: MoneyEvnHistoryItem[]; 
 
 export default function EvnBillCard({ cycle, prevCycle, tier, evnBill, history, solarStart }: EvnBillCardProps) {
   return (
-    <section
-      className="rounded-[22px] border border-white/10 border-t-[#fb8a95]/25 bg-[#0a0e18]/90 p-3 shadow-2xl backdrop-blur-xl sm:p-4"
+    <Card
+      accent="warn"
       aria-labelledby="evn-bill"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-zinc-100" id="evn-bill">
-          <i className="fa-solid fa-file-invoice mr-1.5 text-[#fb8a95]" />
+          <i className="fa-solid fa-file-invoice mr-1.5 text-grid-in" />
           EVN bill
         </h2>
         <span className="text-[11px] text-zinc-500">{cycleMonthLabel(cycle.start)} cycle</span>
@@ -211,6 +212,6 @@ export default function EvnBillCard({ cycle, prevCycle, tier, evnBill, history, 
           {history.length > 0 && <BillHistory history={history} solarStart={solarStart} />}
         </div>
       </DetailsDisclosure>
-    </section>
+    </Card>
   );
 }

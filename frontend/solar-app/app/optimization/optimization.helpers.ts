@@ -287,9 +287,9 @@ export interface WeatherIcon {
 }
 
 export function weatherIcon(code: number | null | undefined): WeatherIcon {
-  const amber = "text-[#ffc76b]";
+  const amber = "text-pv";
   const gray = "text-zinc-500";
-  const blue = "text-[#7dd3fc]";
+  const blue = "text-load";
   if (code == null) return { icon: "fa-cloud-sun", className: amber };
   if (code === 0) return { icon: "fa-sun", className: amber };
   if (code <= 2) return { icon: "fa-cloud-sun", className: amber };

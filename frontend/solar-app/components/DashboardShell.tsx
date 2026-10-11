@@ -47,7 +47,7 @@ export default function DashboardShell({
     }
 
     return (
-        <div className="min-h-screen w-full bg-[#04060c] text-[#eef1f8]">
+        <div className="min-h-screen w-full bg-ink text-[#eef1f8]">
             <div className="aurora" aria-hidden="true" />
 
             <div className="app">

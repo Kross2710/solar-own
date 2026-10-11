@@ -1,5 +1,6 @@
 import { fmtMoneyShort, fmtNum, parseDateMonth } from "@/lib/format";
 import { CurtailmentResponse } from "@/lib/types/optimization";
+import Card from "@/components/Card";
 
 type SupportedCurtailment = Extract<CurtailmentResponse, { supported: true }>;
 
@@ -12,13 +13,13 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
   const maxLost = Math.max(...data.recent.map((item) => item.lost_kwh), 0.1);
 
   return (
-    <section
-      className="rounded-[22px] border border-white/10 border-t-amber-300/20 bg-[#0a0e18]/90 p-3 shadow-2xl backdrop-blur-xl sm:p-4"
+    <Card
+      accent="pv"
       aria-labelledby="wasted-sun"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-zinc-100" id="wasted-sun">
-          <i className="fa-solid fa-sun mr-1.5 text-[#ffc76b]" />
+          <i className="fa-solid fa-sun mr-1.5 text-pv" />
           Wasted sun
         </h2>
         <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">estimate</span>
@@ -32,7 +33,7 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
         </div>
         <div className="text-right">
           <p className="text-[11px] text-zinc-400">Today</p>
-          <p className="mt-1 text-base font-bold tabular-nums text-[#ffc76b]">{fmtNum(today.lost_kwh, 1)} kWh</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-pv">{fmtNum(today.lost_kwh, 1)} kWh</p>
           <p className="text-[11px] tabular-nums text-zinc-500">~{fmtMoneyShort(todayMoney)}</p>
         </div>
       </div>
@@ -42,7 +43,7 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
           {data.recent.map((item, index) => (
             <span
               key={item.day}
-              className={`flex-1 rounded-t-[2px] ${index === data.recent.length - 1 ? "bg-[#ffc76b]" : "bg-[#ffc76b]/35"}`}
+              className={`flex-1 rounded-t-[2px] ${index === data.recent.length - 1 ? "bg-pv" : "bg-pv/35"}`}
               style={{ height: `${Math.max(6, (item.lost_kwh / maxLost) * 100)}%` }}
               title={`${parseDateMonth(item.day)}: ${fmtNum(item.lost_kwh, 1)} kWh`}
             />
@@ -62,6 +63,6 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
           "Almost nothing wasted today."
         )}
       </p>
-    </section>
+    </Card>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { COLORS } from "@/lib/colors";
 
 interface SocDayChartProps {
   // Dữ liệu theo giờ: mảng [timestamp, % pin]
@@ -65,7 +66,7 @@ export default function SocDayChart({ data, reservePercent = 20 }: SocDayChartPr
           width: [2.5, 1.5],
           dashArray: [0, 4], // Đường 1 nét liền, đường 2 nét đứt
         },
-        colors: ["#b8a6ff", "rgba(255, 255, 255, 0.35)"], // #b8a6ff là màu pin chuẩn Aurora
+        colors: [COLORS.batt, "rgba(255, 255, 255, 0.35)"],
         fill: {
           type: ["gradient", "solid"],
           gradient: {
@@ -82,7 +83,7 @@ export default function SocDayChart({ data, reservePercent = 20 }: SocDayChartPr
         xaxis: {
           type: "datetime",
           labels: {
-            style: { colors: "#707a8e", fontSize: "11px" },
+            style: { colors: COLORS.dim, fontSize: "11px" },
             datetimeUTC: false,
             format: "HH:mm",
           },
@@ -94,7 +95,7 @@ export default function SocDayChart({ data, reservePercent = 20 }: SocDayChartPr
           max: 100,
           tickAmount: 4,
           labels: {
-            style: { colors: "#707a8e", fontSize: "11px" },
+            style: { colors: COLORS.dim, fontSize: "11px" },
             formatter: (v: number) => `${Math.round(v)}%`,
           },
         },

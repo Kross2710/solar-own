@@ -8,8 +8,8 @@ import { Notice } from "@/lib/types/assistant";
 const VISIBLE_NOTICES = 2;
 
 const tone = {
-  warn: "bg-[#fb8a95]/10 text-[#fb8a95] ring-[#fb8a95]/35",
-  info: "bg-[#ffc76b]/10 text-[#ffc76b] ring-[#ffc76b]/35",
+  warn: "bg-grid-in/10 text-grid-in ring-grid-in/35",
+  info: "bg-pv/10 text-pv ring-pv/35",
 };
 
 interface NoticeListProps {
@@ -35,7 +35,7 @@ export default function NoticeList({ notices, onDismiss, onAsk }: NoticeListProp
           const view = noticeView(notice);
           return (
             <li
-              className="flex gap-3 rounded-[18px] border border-white/10 bg-[#0a0e18]/90 p-3 shadow-xl backdrop-blur-xl"
+              className="flex gap-3 rounded-[18px] border border-white/10 bg-card/90 p-3 shadow-xl backdrop-blur-xl"
               key={notice.id}
             >
               <span className={`grid size-9 shrink-0 place-items-center rounded-xl ring-1 ring-inset ${tone[notice.severity]}`}>
@@ -46,7 +46,7 @@ export default function NoticeList({ notices, onDismiss, onAsk }: NoticeListProp
                 <p className="mt-0.5 text-[12px] leading-snug text-zinc-400">{view.detail}</p>
                 {onAsk && (
                   <button
-                    className="mt-2 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-[#ffc76b] ring-1 ring-inset ring-[#ffc76b]/25 transition-colors hover:bg-[#ffc76b]/10"
+                    className="mt-2 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-pv ring-1 ring-inset ring-pv/25 transition-colors hover:bg-pv/10"
                     onClick={() => onAsk(view.ask)}
                     type="button"
                   >

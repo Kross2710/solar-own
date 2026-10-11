@@ -1,3 +1,4 @@
+import { COLORS } from "@/lib/colors";
 import { fmtMoney, fmtNum, parseDateMonth } from "@/lib/format";
 import { MetricsResponse } from "@/lib/types";
 import { ChatEntry, ChatStreamEvent, Notice, ProposedAction } from "@/lib/types/assistant";
@@ -11,10 +12,10 @@ export interface SuggestedQuestion {
 }
 
 export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
-  { q: "Why is my projected bill high?", icon: "fa-receipt", color: "#fb8a95" },
-  { q: "Am I close to the expensive price tier?", icon: "fa-arrow-trend-up", color: "#ffc76b" },
-  { q: "Anything unusual in the last few days?", icon: "fa-magnifying-glass", color: "#7dd3fc" },
-  { q: "How does this month compare to last month?", icon: "fa-chart-line", color: "#34d399" },
+  { q: "Why is my projected bill high?", icon: "fa-receipt", color: COLORS.gridIn },
+  { q: "Am I close to the expensive price tier?", icon: "fa-arrow-trend-up", color: COLORS.pv },
+  { q: "Anything unusual in the last few days?", icon: "fa-magnifying-glass", color: COLORS.load },
+  { q: "How does this month compare to last month?", icon: "fa-chart-line", color: COLORS.good },
 ];
 
 // Battery power (W) beyond which it counts as charging / discharging.

@@ -12,7 +12,7 @@ export default function MoneyPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-zinc-400">
         Connecting to Solar...
       </div>
     );
@@ -20,7 +20,7 @@ export default function MoneyPage() {
 
   if (error || !money) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-red-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
         Can&apos;t get data from Backend
       </div>
     );
