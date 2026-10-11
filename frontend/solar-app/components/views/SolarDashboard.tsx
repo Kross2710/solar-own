@@ -6,9 +6,11 @@ import DashboardShell from "../DashboardShell";
 import OverviewTimeChart, {
   PowerHistoryPoint,
 } from "../OverviewTimeChart";
+import TodayCard from "@/components/overview/TodayCard";
 import { useState } from "react";
 
 import { apiUrl, fetcher } from "@/lib/api";
+import { energyState } from "@/lib/energyState";
 import { MetricsResponse } from "@/lib/types";
 
 const cardClass =
@@ -60,19 +62,25 @@ export default function Dashboard() {
     }
   );
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
-      <div className="min-h-screen bg-[#04060c] text-zinc-400 flex items-center justify-center font-sans">
-        Connecting to Solar...
-      </div>
+      <DashboardShell status="connecting">
+        <OverviewSkeleton />
+      </DashboardShell>
     );
   }
 
-  if (error) {
+  if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#04060c] text-red-400 flex items-center justify-center font-sans">
-        Can&apos;t get data from Backend
-      </div>
+      <DashboardShell status="error">
+        <section
+          className={`${cardClass} border-t-rose-300/30 p-6 text-center`}
+          role="alert"
+        >
+          <p className="text-sm font-semibold text-rose-300">Can&apos;t get data from the backend</p>
+          <p className="mt-1 text-[12px] text-zinc-400">The rest of the app stays available from the tabs below.</p>
+        </section>
+      </DashboardShell>
     );
   }
 
@@ -90,23 +98,17 @@ export default function Dashboard() {
   const solar_battery_consumption_percent = today_consumption_kwh ? (solar_battery_consumption / today_consumption_kwh) * 100 : 0;
   const grid_consumption_percent = today_consumption_kwh ? (today_buy_kwh / today_consumption_kwh) * 100 : 0;
   const solarUsagePercent = Math.min(100, Math.max(0, solar_battery_consumption_percent));
-  // Manipulate DOM elements for dynamic updates (if needed)
-  let solarState = "";
-  if (pvWatt && pvWatt > 0) {
-    solarState = "Generating";
-  }
-  if (pvWatt === 0) {
-    solarState = "Idle";
-  }
-  if (pvWatt < houseWatt) {
-    solarState = "Discharging";
-  }
-  if (battSoc == 100 && houseWatt - pvWatt < 100) {
-    solarState = "Fully Charged";
-  }
+  const solarState = energyState({
+    pvWatt,
+    houseWatt,
+    gridWatt,
+    battWatt,
+    battSoc,
+  });
+  const reservePercent = data?.battery_reserve_percent ?? 20;
 
   return (
-    <DashboardShell status={data?.status} source={data?.source}>
+    <DashboardShell status={data?.status} source={data?.source} updatedAt={data?.timestamp}>
       {/* Stale bar cảnh báo */}
       <div className="stale" id="staleBar" hidden={!data?.error}>
         <span className="stale-ico">
@@ -176,7 +178,13 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        <p className="mt-4 text-center text-[11px] leading-snug text-zinc-500">
+          Solar + battery is energy not bought from the grid (estimate).
+        </p>
       </section>
+
+      {data && <TodayCard metrics={data} />}
+
       <div className="mt-4">
         <DetailsButton
           open={detailOpen}
@@ -218,12 +226,22 @@ export default function Dashboard() {
             <OverviewTimeChart
               data={historyData ?? []}
               mode={powerTab}
-              reservePercent={20}
+              reservePercent={reservePercent}
             />
           </div>
         </section>
       )}
 
     </DashboardShell>
+  );
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="flex flex-col gap-7" aria-hidden="true">
+      <div className={`${cardClass} h-72 animate-pulse`} />
+      <div className={`${cardClass} h-44 animate-pulse`} />
+      <div className={`${cardClass} h-28 animate-pulse`} />
+    </div>
   );
 }

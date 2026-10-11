@@ -13,6 +13,7 @@ export interface MetricsResponse {
   battery_capacity_kwh?: number | null;
   battery_reserve_percent?: number | null;
   poll_interval_seconds?: number;
+  timestamp?: string;
   error?: string;
 }
 

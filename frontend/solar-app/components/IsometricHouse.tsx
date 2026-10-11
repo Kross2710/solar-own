@@ -1,4 +1,5 @@
 import React from "react";
+import { energyStateClass } from "@/lib/energyState";
 
 interface HouseProps {
     pvWatt: number;
@@ -25,6 +26,7 @@ export default function IsometricHouse({
     const isGridImport = gridWatt > 20;
     const isGridExport = gridWatt < -20;
 
+    const signedGridWatt = gridWatt;
     battWatt = Math.abs(battWatt); // Chuyển đổi giá trị watt pin sang dương để hiển thị
     gridWatt = Math.abs(gridWatt); // Chuyển đổi giá trị watt lưới sang dương để hiển thị
 
@@ -276,19 +278,19 @@ export default function IsometricHouse({
             <div className="absolute left-[38.1%] top-[70%] h-[16%] w-px bg-white/20 -translate-x-1/2" />
 
             {/* 4. Grid Callout */}
-            <div className={`absolute left-[83.3%] bottom-2 -translate-x-1/2 text-center whitespace-nowrap z-10 transition-opacity ${Math.abs(gridWatt) < 10 ? "opacity-50" : "opacity-100"}`}>
-                <div className={`text-sm md:text-base font-bold tabular-nums ${gridWatt > 0 ? "text-rose-300" : gridWatt < 0 ? "text-emerald-300" : "text-zinc-300"}`}>
+            <div className={`absolute left-[83.3%] bottom-2 -translate-x-1/2 text-center whitespace-nowrap z-10 transition-opacity ${Math.abs(signedGridWatt) < 10 ? "opacity-50" : "opacity-100"}`}>
+                <div className={`text-sm md:text-base font-bold tabular-nums ${signedGridWatt > 10 ? "text-rose-300" : signedGridWatt < -10 ? "text-emerald-300" : "text-zinc-300"}`}>
                     {formatWatt(gridWatt)}
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-400">
-                    {gridWatt < -10 ? "Export" : "Grid"}
+                    {signedGridWatt < -10 ? "Export" : "Grid"}
                 </div>
             </div>
             <div className="absolute left-[83.3%] top-[82%] h-[6%] w-px bg-white/20 -translate-x-1/2" />
 
             {/* 5. Status Callout (Generating, Idle, Discharging), on the top left of the house */}
-            <div className="absolute left-[18%] top-2 -translate-x-1/2 text-center whitespace-nowrap z-10">
-                <div className="text-sm md:text-base font-bold text-amber-300 tabular-nums">{solarState}</div>
+            <div className="absolute left-1 top-2 z-10 max-w-[6.75rem] text-left sm:left-2">
+                <div className={`text-[13px] font-bold leading-tight md:text-sm ${energyStateClass(solarState)}`}>{solarState}</div>
             </div>
         </div>
     );

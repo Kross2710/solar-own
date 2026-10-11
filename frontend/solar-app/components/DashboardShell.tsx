@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import UpdatedAgo from "@/components/overview/UpdatedAgo";
 import SettingsSheet from "@/components/settings/SettingsSheet";
 import { useNotices } from "@/hooks/useAssistant";
 
@@ -10,12 +11,14 @@ interface DashboardShellProps {
     children: ReactNode;
     status?: string;
     source?: string;
+    updatedAt?: string;
 }
 
 export default function DashboardShell({
     children,
     status = "online",
-    source = "MOCK",
+    source,
+    updatedAt,
 }: DashboardShellProps) {
     const pathname = usePathname();
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -56,13 +59,19 @@ export default function DashboardShell({
                     <div className="meta">
                         <span className="status">
                             <span
-                                className={`dot ${status === "error" ? "dot--off" : "dot--on"
+                                className={`dot ${status === "error"
+                                    ? "dot--off"
+                                    : status === "connecting"
+                                        ? "dot--wait"
+                                        : "dot--on"
                                     }`}
                             />
                             {status}
                         </span>
 
-                        {source && <span className="badge">{source}</span>}
+                        <UpdatedAgo iso={updatedAt} />
+
+                        {source ? <span className="badge">{source}</span> : null}
 
                         <button
                             className="gear"
