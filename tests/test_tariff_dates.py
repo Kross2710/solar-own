@@ -1,6 +1,7 @@
 from datetime import date
 from unittest import TestCase
 from backend.services.money import compute_money
+from backend.services.curtailment import marginal_price, grid_reduction_value
 from providers.evn import EvnTariff, DEFAULT_TIERS
 
 
@@ -38,3 +39,14 @@ class TariffDatesTests(TestCase):
         self.assertEqual(tariff.at('2026-11-01').cost(100),123400)
         with self.assertRaises(ValueError):
             EvnTariff([(100,1000),(50,2000),(None,3000)])
+
+    def test_optimization_prices_projected_cycle_and_integrates_tiers(self):
+        class Store:
+            def daily_full(self, _days):
+                return [{'day':'2026-11-01','buy':100}]
+        store, tariff = Store(), EvnTariff()
+        # On day 10, 100 measured kWh projects to 300, not last-30-days use.
+        self.assertEqual(marginal_price(store, tariff, today=date(2026,11,10)),round(2894*1.08))
+        expected = tariff.at('2026-11-01').cost(300)-tariff.at('2026-11-01').cost(150)
+        self.assertEqual(grid_reduction_value(store,tariff,150,today=date(2026,11,10)),round(expected))
+        self.assertIsNone(marginal_price(store,tariff,today=date(2026,12,1)))

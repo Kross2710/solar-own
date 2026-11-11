@@ -30,3 +30,8 @@ test('battery clock uses Vietnam time across day boundary', () => {
   const result = batteryOutlook({ battery_soc: 50, battery_capacity_kwh: 20, battery_power_w: -1000, battery_reserve_percent: 20 }, new Date('2026-11-06T16:52:00Z'));
   assert.match(result.detail, /05:50/);
 });
+test('late night has no fixed 21-23h warning and spare sun needs battery room checked', () => {
+  const metrics = { pv_power_w: 5000, load_power_w: 1000, battery_soc: 40, battery_capacity_kwh: 20 };
+  assert.equal(buildSuggestions({ metrics, kind: 'sunny', hour: 12 }).some(s => s.id === 'wash-now'), false);
+  assert.equal(buildSuggestions({ metrics: { ...metrics, battery_soc: 100 }, kind: 'sunny', hour: 12 }).some(s => s.id === 'wash-now'), true);
+});

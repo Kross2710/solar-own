@@ -43,9 +43,9 @@ export default function BestHoursCard({ cells, now }: { cells: HourCell[]; now: 
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-bold text-zinc-100" id="best-hours">
           <i className="fa-solid fa-clock mr-1.5 text-pv" />
-          Best hours today
+          Usual best hours
         </h2>
-        <span className="text-[11px] text-zinc-500">based on the last 30 days</span>
+        <span className="text-[11px] text-zinc-500">30-day pattern · Vietnam time</span>
       </div>
 
       {best && (
@@ -97,7 +97,7 @@ export default function BestHoursCard({ cells, now }: { cells: HourCell[]; now: 
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-400">
-        <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.cheap}`} />Free (spare sun)</span>
+        <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.cheap}`} />Spare sun</span>
         <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.mid}`} />Battery</span>
         <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.dear}`} />Grid</span>
       </div>

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Awaitable, Callable, cast
 
 from backend.runtime import AppRuntime
@@ -11,10 +11,9 @@ from providers.analytics import estimate_curtailment
 from providers.base import Provider, VN_TZ
 from providers.evn import EvnTariff
 from providers.history import HistoryStore
+from backend.services.money import cycle_bounds
 
 
-# Rough monthly purchase when no history exists yet, to pick a marginal price.
-DEFAULT_MONTHLY_BUY_KWH = 235
 # Pause between day-curve requests to avoid the SEMS rate limit (GY0429).
 REQUEST_PAUSE_SECONDS = 0.8
 BACKFILL_DAYS = 30
@@ -24,10 +23,31 @@ def supports_day_curve(provider: Provider) -> bool:
     return callable(getattr(provider, "fetch_day_curve", None))
 
 
-def marginal_price(store: HistoryStore, tariff: EvnTariff) -> int:
-    """đ/kWh a wasted kWh would have avoided, at the tier currently being bought."""
-    monthly_buy = sum((row.get("buy") or 0) for row in store.daily_full(35)[-30:])
-    return round(tariff.marginal(monthly_buy or DEFAULT_MONTHLY_BUY_KWH))
+def projected_grid_use(store: HistoryStore, today: date, start_day: int = 1) -> tuple[float | None, date, date]:
+    start, days, elapsed, end = cycle_bounds(today, start_day)
+    rows = [row for row in store.daily_full(70) if start.isoformat() <= row["day"] <= today.isoformat()
+            and row.get("buy") is not None]
+    # Never fabricate a default price when there is no purchase history.
+    if not rows:
+        return None, start, end
+    return sum(row["buy"] for row in rows) * days / elapsed, start, end
+
+
+def marginal_price(store: HistoryStore, tariff: EvnTariff, start_day: int = 1, today: date | None = None) -> int | None:
+    """Price of the next kWh at estimated end-of-cycle use, VAT included."""
+    today = today or datetime.now(VN_TZ).date()
+    projected, _, end = projected_grid_use(store, today, start_day)
+    return None if projected is None else round(tariff.at(end - timedelta(days=1)).marginal(projected))
+
+
+def grid_reduction_value(store: HistoryStore, tariff: EvnTariff, kwh: float, start_day: int = 1,
+                         today: date | None = None) -> int | None:
+    today = today or datetime.now(VN_TZ).date()
+    projected, start, end = projected_grid_use(store, today, start_day)
+    if projected is None:
+        return None
+    return round(tariff.period_cost(projected, start, end)
+                 - tariff.period_cost(max(0, projected - max(0, kwh)), start, end))
 
 
 async def curtail_for(provider: Provider, config: dict[str, Any], day: str) -> dict[str, Any]:
@@ -56,10 +76,13 @@ async def build_curtailment(runtime: AppRuntime) -> dict[str, Any]:
     if estimate.get("lost_kwh") is not None:
         by_day[today] = estimate["lost_kwh"]
 
+    start_day = int((runtime.config.get("evn") or {}).get("cycle_start_day", 1))
     return {
         "supported": True,
         "currency": runtime.config.get("currency") or "VND",
-        "marginal": marginal_price(runtime.store, runtime.tariff),
+        "marginal": marginal_price(runtime.store, runtime.tariff, start_day),
+        "valuation_basis": "hypothetical_grid_reduction_at_projected_cycle_use",
+        "today_grid_reduction_value": None if estimate.get("lost_kwh") is None else grid_reduction_value(runtime.store, runtime.tariff, estimate["lost_kwh"], start_day),
         "today": {
             "lost_kwh": estimate.get("lost_kwh"),
             "full_at": estimate.get("full_at"),

@@ -20,7 +20,7 @@ async def hourly(
     """Average 24-hour profile + marginal price, for shifting loads into cheap hours."""
     return JSONResponse({
         "hours": runtime.store.hourly_profile(30),
-        "marginal": marginal_price(runtime.store, runtime.tariff),
+        "marginal": marginal_price(runtime.store, runtime.tariff, int((runtime.config.get("evn") or {}).get("cycle_start_day", 1))),
         "currency": runtime.config.get("currency") or "VND",
     })
 

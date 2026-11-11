@@ -48,7 +48,7 @@ export default function OptimizationPage() {
   );
   const kind = dayKind(qual, tomorrow?.kwh ?? null, ready?.avg30_kwh ?? null);
   const plan = batteryPlan(metrics, ready?.night_need_kwh ?? null);
-  const suggestions = buildSuggestions({ metrics, kind, tier: money?.tier, hour: siteClock(now).hour });
+  const suggestions = buildSuggestions({ metrics, kind, tier: money?.projected_tier ?? money?.tier, hour: siteClock(now).hour });
   const cells = useMemo(() => (hourly ? hourCells(hourly.hours, hourly.marginal) : []), [hourly]);
 
   if (metricsLoading && forecastLoading) {

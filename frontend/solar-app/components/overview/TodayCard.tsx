@@ -127,7 +127,7 @@ export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
 
   const battery = batteryOutlook(metrics, now);
   const sun = ready ? sunRow(metrics, ready, hour, planTitle(kind, tomorrow?.kwh ?? null), kind) : null;
-  const suggestion = buildSuggestions({ metrics, kind, tier: money?.tier, hour })[0];
+  const suggestion = buildSuggestions({ metrics, kind, tier: money?.projected_tier ?? money?.tier, hour })[0];
   const saved = money?.today.saved;
   const cycle = money?.cycle;
 

@@ -8,8 +8,7 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
   const today = data.today;
   if (today.lost_kwh == null) return null;
 
-  const lost30Money = data.marginal * data.total30_kwh;
-  const todayMoney = data.marginal * today.lost_kwh;
+  const todayMoney = data.today_grid_reduction_value;
   const maxLost = Math.max(...data.recent.map((item) => item.lost_kwh), 0.1);
 
   return (
@@ -28,13 +27,13 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
       <div className="mt-3 flex items-end justify-between gap-3">
         <div>
           <p className="text-[11px] text-zinc-400">{data.days === 1 ? "Today so far" : `Last ${data.days} days`}</p>
-          <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-zinc-100">~{fmtMoneyShort(lost30Money)}</p>
-          <p className="mt-1 text-[11px] text-zinc-500">{fmtNum(data.total30_kwh)} kWh the battery had no room for</p>
+          <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-zinc-100">{fmtNum(data.total30_kwh)} kWh</p>
+          <p className="mt-1 text-[11px] text-zinc-500">estimated solar curtailed while the battery was full</p>
         </div>
         <div className="text-right">
           <p className="text-[11px] text-zinc-400">Today</p>
           <p className="mt-1 text-base font-bold tabular-nums text-pv">{fmtNum(today.lost_kwh, 1)} kWh</p>
-          <p className="text-[11px] tabular-nums text-zinc-500">~{fmtMoneyShort(todayMoney)}</p>
+          <p className="text-[11px] tabular-nums text-zinc-500">{todayMoney == null ? "Value unavailable" : `~${fmtMoneyShort(todayMoney)} tariff equivalent`}</p>
         </div>
       </div>
 
@@ -51,11 +50,11 @@ export default function WastedSunCard({ data }: { data: SupportedCurtailment }) 
         </div>
       )}
 
+      <p className="mt-3 text-[11px] text-zinc-500">Tariff equivalent assumes this energy replaces grid purchases in the projected cycle. Actual savings require shifting existing loads; surplus alone is not lost money.</p>
       <p className="mt-3 text-[12px] leading-relaxed text-zinc-300">
         {today.full_at ? (
           <>
-            Battery was full at <strong className="text-zinc-100">{today.full_at}</strong> — run heavy loads after that
-            to use the surplus instead of losing it.
+            Battery reached full at <strong className="text-zinc-100">{today.full_at}</strong> today. On similar days, move existing flexible loads into the midday surplus.
           </>
         ) : today.lost_kwh > 0 ? (
           "Midday surplus sun was curtailed — shift heavy loads into midday."

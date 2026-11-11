@@ -13,8 +13,8 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from backend.runtime import AppRuntime
-from backend.services.curtailment import marginal_price
-from backend.services.money import build_money, tier_ladder
+from backend.services.curtailment import grid_reduction_value
+from backend.services.money import build_money
 from providers.base import VN_TZ
 
 
@@ -114,7 +114,7 @@ def check_money(runtime: AppRuntime, now: datetime) -> int:
     next_index = tier["index"] + 1
     to_next = tier["to_next_kwh"]
     if elapsed >= TIER_MIN_DAYS and to_next is not None and next_index >= TIER_WARN_INDEX:
-        projected_tier = tier_ladder(runtime.tariff, cycle["proj_buy_kwh"])
+        projected_tier = money["projected_tier"]
         if projected_tier["index"] >= next_index:
             per_day = cycle["buy_kwh"] / elapsed
             days_left = round(to_next / per_day) if per_day > 0 else None
@@ -144,7 +144,7 @@ def check_curtailment(runtime: AppRuntime, now: datetime) -> int:
     return int(runtime.store.notice_add(
         "wasted_sun_up", f"{year}-W{week:02d}", "info",
         {"lost_kwh": round(lost, 1), "prev_kwh": round(before, 1),
-         "value": round(lost * marginal_price(runtime.store, runtime.tariff)),
+         "value": grid_reduction_value(runtime.store, runtime.tariff, lost, int((runtime.config.get("evn") or {}).get("cycle_start_day", 1)), now.date()),
          "full_at": full_times[len(full_times) // 2] if full_times else None},
         _stamp(now + NOTICE_TTL),
     ))

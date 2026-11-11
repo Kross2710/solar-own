@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Any, Awaitable, Callable, cast
 
 from backend.runtime import AppRuntime
-from backend.services.curtailment import marginal_price
+from backend.services.curtailment import marginal_price, grid_reduction_value
 from backend.services.history_summary import compute_records, compute_stats
 from backend.services.money import build_money
 from providers import report as report_mod
@@ -215,10 +215,11 @@ def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[
     async def get_curtailment(args: dict) -> dict:
         days = max(1, min(int(args.get("days") or 30), 60))
         rows = store.curtailment_recent(days)
-        marginal = marginal_price(store, runtime.tariff)
+        marginal = marginal_price(store, runtime.tariff, int((runtime.config.get("evn") or {}).get("cycle_start_day", 1)))
         total = round(sum((r.get("lost") or 0) for r in rows), 1)
-        return {"days": days, "total_lost_kwh": total, "value_vnd": round(total * marginal),
+        return {"days": days, "total_lost_kwh": total, "value_vnd": grid_reduction_value(store, runtime.tariff, total, _cycle_start_day(runtime)),
                 "marginal_vnd_per_kwh": marginal,
+                "valuation_note": "Tariff equivalent only, not achievable savings; only displaced grid purchases reduce bills.",
                 "daily": [{"day": r["day"], "lost_kwh": r.get("lost"), "battery_full_at": r.get("full_at")}
                           for r in rows]}
 
