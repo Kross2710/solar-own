@@ -1,9 +1,11 @@
 "use client";
 
+import { SITE_TZ } from "@/lib/time";
 import { useEffect, useState } from "react";
 
 function formatClock(ms: number): string {
   return new Date(ms).toLocaleTimeString("en-GB", {
+    timeZone: SITE_TZ,
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

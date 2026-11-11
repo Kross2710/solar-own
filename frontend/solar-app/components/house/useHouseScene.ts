@@ -1,3 +1,4 @@
+import { siteClock } from "@/lib/time";
 import { batteryOutlook } from "@/app/optimization/optimization.helpers";
 import { useMoney } from "@/hooks/useMoney";
 import { useForecast, useHourly } from "@/hooks/useOptimization";
@@ -15,10 +16,10 @@ const DEFAULT_LON = 106.7097;
 function typicalAt(hours: HourlyPoint[] | undefined, now: Date): number | null {
   if (!hours) return null;
   const pvOf = (hour: number) => hours.find((point) => point.hour === hour % 24)?.pv ?? null;
-  const here = pvOf(now.getHours());
-  const next = pvOf(now.getHours() + 1);
+  const here = pvOf(siteClock(now).hour);
+  const next = pvOf(siteClock(now).hour + 1);
   if (here == null || next == null) return here;
-  return here + (next - here) * (now.getMinutes() / 60);
+  return here + (next - here) * (siteClock(now).minute / 60);
 }
 
 export function useHouseScene(metrics: MetricsResponse): SceneData {

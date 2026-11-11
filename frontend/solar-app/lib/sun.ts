@@ -1,3 +1,5 @@
+import { siteClock } from "./time";
+
 // Sunrise and sunset for a date and place (NOAA approximation, good to a few minutes).
 
 const RAD = Math.PI / 180;
@@ -11,8 +13,9 @@ export interface SunTimes {
 }
 
 export function sunTimes(date: Date, lat: number, lon: number): SunTimes | null {
-  const base = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayOfYear = Math.round((base - Date.UTC(date.getFullYear(), 0, 0)) / DAY_MS);
+  const [year, month, day] = siteClock(date).day.split("-").map(Number);
+  const base = Date.UTC(year, month - 1, day);
+  const dayOfYear = Math.round((base - Date.UTC(year, 0, 0)) / DAY_MS);
   const g = ((2 * Math.PI) / 365) * (dayOfYear - 1);
 
   const eqTime =

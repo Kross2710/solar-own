@@ -104,7 +104,7 @@ export function noticeView(notice: Notice): NoticeView {
       return {
         icon: "fa-sun",
         title: `~${fmtNum(notice.data.lost_kwh)} kWh of sun wasted this week`,
-        detail: `Up from ~${fmtNum(notice.data.prev_kwh)} kWh the week before — about ${fmtMoney(notice.data.value)}${
+        detail: `Up from ~${fmtNum(notice.data.prev_kwh)} kWh the week before — estimated curtailed energy${
           notice.data.full_at ? `. Battery usually full by ${notice.data.full_at}` : ""
         }.`,
         ask: `This week about ${fmtNum(notice.data.lost_kwh)} kWh of sunshine went unused, up from ${fmtNum(notice.data.prev_kwh)} kWh. How can I use more of it?`,

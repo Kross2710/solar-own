@@ -1,5 +1,7 @@
 "use client";
 
+import { siteClock } from "@/lib/time";
+
 import { useState } from "react";
 import Card from "@/components/Card";
 import {
@@ -24,7 +26,7 @@ function hourLabel(hour: number): string {
 }
 
 export default function BestHoursCard({ cells, now }: { cells: HourCell[]; now: Date }) {
-  const currentHour = now.getHours();
+  const currentHour = siteClock(now).hour;
   const [selectedHour, setSelectedHour] = useState(currentHour);
 
   if (!cells.length || cells.every((cell) => cell.level === "none")) return null;

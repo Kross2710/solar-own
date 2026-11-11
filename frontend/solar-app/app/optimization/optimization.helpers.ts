@@ -1,3 +1,4 @@
+import { siteClock, siteTime } from "@/lib/time";
 import { fmtMoney } from "@/lib/format";
 import { MetricsResponse } from "@/lib/types";
 import { MoneyTier } from "@/lib/types/money";
@@ -89,13 +90,11 @@ export interface BatteryOutlook {
 }
 
 function clockIn(now: Date, minutes: number): Date {
-  const at = new Date(now.getTime() + minutes * 60_000);
-  at.setMinutes(Math.round(at.getMinutes() / ROUND_MIN) * ROUND_MIN, 0, 0);
-  return at;
+  return new Date(Math.round((now.getTime() + minutes * 60_000) / (ROUND_MIN * 60_000)) * ROUND_MIN * 60_000);
 }
 
 function fmtClock(at: Date): string {
-  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  return siteTime(at);
 }
 
 // How long the battery lasts at the current load, or when it will be full.
@@ -122,7 +121,7 @@ export function batteryOutlook(metrics: MetricsResponse | undefined, now: Date):
   if (battKw * 1000 > BATTERY_IDLE_W) {
     const minutes = (((100 - soc) / 100) * capacity / battKw) * 60;
     const fullAt = clockIn(now, minutes);
-    if (fullAt.getDate() !== now.getDate() || fullAt.getHours() >= SUN_LAST_HOUR) {
+    if (siteClock(fullAt).day !== siteClock(now).day || siteClock(fullAt).hour >= SUN_LAST_HOUR) {
       return { title: `Charging · ${soc}%`, detail: `${battKw.toFixed(1)} kW — too slow to fill today` };
     }
     return { title: `Full around ${fmtClock(fullAt)}`, detail: `charging ${battKw.toFixed(1)} kW · ${soc}% now` };
@@ -307,7 +306,8 @@ export function bestWindow(cells: HourCell[]): HourWindow | null {
 
 // Minutes left in the window if `now` falls inside it.
 export function minutesLeftInWindow(window: HourWindow, now: Date): number | null {
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const clock = siteClock(now);
+  const minutes = clock.hour * 60 + clock.minute;
   if (minutes < window.from * 60 || minutes >= window.to * 60) return null;
   return window.to * 60 - minutes;
 }
@@ -337,7 +337,7 @@ export function isFlatForecast(days: ForecastDay[]): boolean {
 }
 
 export function dayOfWeek(iso: string): string {
-  return DAY_NAMES[new Date(`${iso}T00:00:00`).getDay()];
+  return DAY_NAMES[new Date(`${iso}T00:00:00Z`).getUTCDay()];
 }
 
 export interface WeatherIcon {

@@ -1,5 +1,7 @@
 "use client";
 
+import { siteClock } from "@/lib/time";
+
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import BestHoursCard from "@/components/optimization/BestHoursCard";
@@ -46,7 +48,7 @@ export default function OptimizationPage() {
   );
   const kind = dayKind(qual, tomorrow?.kwh ?? null, ready?.avg30_kwh ?? null);
   const plan = batteryPlan(metrics, ready?.night_need_kwh ?? null);
-  const suggestions = buildSuggestions({ metrics, kind, tier: money?.tier, hour: now.getHours() });
+  const suggestions = buildSuggestions({ metrics, kind, tier: money?.tier, hour: siteClock(now).hour });
   const cells = useMemo(() => (hourly ? hourCells(hourly.hours, hourly.marginal) : []), [hourly]);
 
   if (metricsLoading && forecastLoading) {

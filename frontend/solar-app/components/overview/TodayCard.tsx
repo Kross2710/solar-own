@@ -1,5 +1,7 @@
 "use client";
 
+import { siteClock } from "@/lib/time";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { cycleCountdownLabel, isTooEarlyToProject } from "@/app/money/money.helpers";
@@ -112,7 +114,7 @@ function sunRow(
 
 export default function TodayCard({ metrics }: { metrics: MetricsResponse }) {
   const now = useNow();
-  const hour = now.getHours();
+  const hour = siteClock(now).hour;
   const { money, isLoading: moneyLoading } = useMoney();
   const { data: forecast } = useForecast();
 

@@ -1,3 +1,4 @@
+import { siteTime } from "@/lib/time";
 import { sunTimes } from "@/lib/sun";
 import { FLOW_MIN_W, fmtPower, SceneData } from "./flow";
 
@@ -11,7 +12,7 @@ export interface Detail {
 }
 
 function clock(date: Date): string {
-  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return siteTime(date);
 }
 
 // Around sunrise and sunset the usual output is too small for a percentage to mean much.
@@ -26,8 +27,7 @@ function nightDetail(scene: SceneData): Detail {
     rise = today.rise;
     if (scene.expectedKwh) lines.push(`~${Math.round(scene.expectedKwh)} kWh expected today`);
   } else {
-    const tomorrow = new Date(scene.now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrow = new Date(scene.now.getTime() + 86_400_000);
     rise = sunTimes(tomorrow, scene.lat, scene.lon)?.rise ?? null;
     if (scene.todayKwh != null) lines.push(`Made ${scene.todayKwh.toFixed(1)} kWh today`);
     if (scene.tomorrowKwh) lines.push(`~${Math.round(scene.tomorrowKwh)} kWh expected tomorrow`);
