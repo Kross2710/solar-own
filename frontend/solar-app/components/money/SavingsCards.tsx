@@ -1,5 +1,5 @@
 import { clampPct, isLastCycleDay, isRoughEstimate } from "@/app/money/money.helpers";
-import { fmtMoneyShort } from "@/lib/format";
+import { MONTH_NAMES, fmtMoneyShort } from "@/lib/format";
 import { MoneyCycle, MoneyPayback, MoneyToday, MoneyTotal } from "@/lib/types/money";
 
 interface SavingsCardsProps {
@@ -78,6 +78,11 @@ function AllTimeCard({ total, payback }: { total: MoneyTotal; payback: MoneyPayb
               ? "Investment fully paid back"
               : `${payback.pct}% of ${fmtMoneyShort(payback.invest)} paid back`}
           </p>
+          {!payback.done && !!payback.scenarios?.length && <details className="mt-2 text-[11px] text-zinc-400">
+            <summary className="cursor-pointer">Payback scenarios · {payback.low_confidence ? "low confidence" : "estimate"}</summary>
+            {payback.scenarios.map(s => { const [year, month] = s.eta.split("-").map(Number); return <p className="mt-1" key={s.method}>{s.method === "current_cycle_pace" ? "Current cycle pace" : "Completed months, repriced today"}: ~{MONTH_NAMES[month - 1]} {year}</p>; })}
+            <p className="mt-1">{payback.scenario_note}</p>
+          </details>}
         </>
       )}
     </article>

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from providers.base import VN_TZ
@@ -182,10 +182,12 @@ def build_summary(
                 and row.get("cons") is not None
                 and row.get("buy") is not None
             ):
+                start = date.fromisoformat(row[key] + "-01")
+                end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
                 saved = round(
-                    tariff.savings(
+                    tariff.period_savings(
                         row.get("cons") or 0,
-                        row.get("buy") or 0,
+                        row.get("buy") or 0, start, end,
                     )
                 )
 

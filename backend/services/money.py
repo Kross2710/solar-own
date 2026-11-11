@@ -115,11 +115,11 @@ def monthly_savings(
             month["buy"] += row.get("buy") or 0
             month["has"] = True
 
-    total_saved = sum(
-        tariff.savings(month["cons"], month["buy"])
-        for month in months.values()
-        if month["has"]
-    )
+    for key, month in months.items():
+        start = date.fromisoformat(key + "-01")
+        end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        month["saved"] = tariff.period_savings(month["cons"], month["buy"], start, end)
+    total_saved = sum(month["saved"] for month in months.values() if month["has"])
     return months, total_saved
 
 
@@ -146,7 +146,7 @@ def payback_block(
     remaining = max(0.0, invest_total - recovered)
     current_month = today.strftime("%Y-%m")
     done_savings = [
-        tariff.savings(month["cons"], month["buy"])
+        month["saved"]
         for key, month in months.items()
         if month["has"] and key != current_month
     ]
@@ -166,7 +166,25 @@ def payback_block(
         months_left = remaining / avg_month
         eta = (today + timedelta(days=months_left * 30.44)).isoformat()
 
+    # Forward scenarios hold today's tariff/VAT fixed; historical recovery stays dated.
+    active = tariff.at(today)
+    completed = []
+    for key, month in months.items():
+        first = date.fromisoformat(key + "-01")
+        expected_days = calendar.monthrange(first.year, first.month)[1]
+        covered = {row["day"] for row in rows if row["day"].startswith(key) and row.get("cons") is not None and row.get("buy") is not None}
+        if key < current_month and len(covered) == expected_days:
+            completed.append(active.savings(month["cons"], month["buy"]))
+    scenarios = []
+    for name, rate in [("completed_months_at_current_tariff", sum(completed)/len(completed) if completed else 0),
+                       ("current_cycle_pace", without_solar_proj - bill_proj)]:
+        if rate > 0 and remaining > 0:
+            scenarios.append({"method": name, "monthly_savings": round(rate),
+                              "eta": (today + timedelta(days=min(365000, remaining / rate * 30.44))).isoformat()})
+
     return {
+        "scenarios": scenarios,
+        "scenario_note": "Current tariff/VAT held fixed; excludes future maintenance and equipment replacement. Scenarios are not a confidence interval.",
         "invest": round(invest_total),
         "recovered": round(recovered),
         "remaining": round(remaining),
@@ -200,18 +218,20 @@ def compute_money(
     proj_buy, proj_cons, bill_lo, bill_hi, proj_method = project_cycle_spend(
         cycle_buy, cycle_cons, days_in_cycle, days_elapsed
     )
-    bill_now, bill_proj = tariff.cost(cycle_buy), tariff.cost(proj_buy)
-    without_solar_now = tariff.cost(cycle_cons)
-    without_solar_proj = tariff.cost(proj_cons)
-    marginal_cons = tariff.marginal(cycle_cons or proj_cons or 1)
-    marginal_buy = tariff.marginal(cycle_buy or proj_buy or 1)
+    bill_now = tariff.period_cost(cycle_buy, cycle_start, cycle_end)
+    bill_proj = tariff.period_cost(proj_buy, cycle_start, cycle_end)
+    without_solar_now = tariff.period_cost(cycle_cons, cycle_start, cycle_end)
+    without_solar_proj = tariff.period_cost(proj_cons, cycle_start, cycle_end)
+    active = tariff.at(today)
+    marginal_cons = active.marginal(cycle_cons or proj_cons or 1)
+    marginal_buy = active.marginal(cycle_buy or proj_buy or 1)
 
     today_row = next((row for row in rows if row["day"] == today_iso), None)
     today_saved = today_selfuse = None
     if today_row and today_row.get("cons") is not None:
         selfuse = max(0.0, (today_row.get("cons") or 0) - (today_row.get("buy") or 0))
         today_selfuse = round(selfuse, 1)
-        today_saved = round(selfuse * marginal_cons)
+        today_saved = round(without_solar_now - tariff.period_cost(max(0, cycle_cons - selfuse), cycle_start, cycle_end))
 
     months, total_saved = monthly_savings(rows, tariff)
 
@@ -223,13 +243,15 @@ def compute_money(
     prev_start_iso, prev_cut_iso = prev_start.isoformat(), prev_cut.isoformat()
     prev_rows = [row for row in rows if prev_start_iso <= row["day"] <= prev_cut_iso]
     prev_buy = sum(row.get("buy") or 0 for row in prev_rows)
-    prev_bill = tariff.cost(prev_buy)
+    prev_bill = tariff.period_cost(prev_buy, prev_start, prev_end)
 
     return {
         "currency": currency,
         "marginal_cons": round(marginal_cons),
         "marginal_buy": round(marginal_buy),
-        "tier": tier_ladder(tariff, cycle_buy),
+        "tariff": tariff.period_info(cycle_start, cycle_end),
+        "tier": tier_ladder(active, cycle_buy),
+        "projected_tier": tier_ladder(tariff.at(cycle_end - timedelta(days=1)), proj_buy),
         "prev_cycle": {
             "start": prev_start_iso,
             "days": days_elapsed,
@@ -326,7 +348,9 @@ def evn_bill_block(
         for row in month_rows
     )
     est_reliable = has_first_day and len(buy_days) >= days_in_month - 1
-    est_amount = tariff.cost(cycle_buy) if buy_days else None
+    start = date.fromisoformat(cycle + "-01")
+    end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    est_amount = tariff.period_cost(cycle_buy, start, end) if buy_days else None
 
     diff_pct = None
     if est_reliable and est_amount and bill.get("amount"):

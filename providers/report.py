@@ -101,11 +101,11 @@ def _self_pct(cons: float, buy: float) -> Optional[float]:
     return round(max(0.0, 1 - buy / cons) * 100, 1)
 
 
-def _money_block(s: dict, tariff: EvnTariff) -> dict:
+def _money_block(s: dict, tariff: EvnTariff, start: date, end: date) -> dict:
     # Thiếu hẳn cons hoặc buy trong kỳ -> None thay vì số vô nghĩa
     # (savings(0, buy) sẽ ra ÂM giả tạo).
-    est_bill = round(tariff.cost(s["buy"])) if s["buy_days"] else None
-    saved = round(tariff.savings(s["cons"], s["buy"])) if (s["cons_days"] and s["buy_days"]) else None
+    est_bill = round(tariff.period_cost(s["buy"], start, end)) if s["buy_days"] else None
+    saved = round(tariff.period_savings(s["cons"], s["buy"], start, end)) if (s["cons_days"] and s["buy_days"]) else None
     return {"est_bill": est_bill, "saved": saved}
 
 
@@ -133,7 +133,7 @@ def compute_report(rows: list, curtail_rows: list, bills: list, tariff: EvnTarif
         return {"ready": False, "reason": "no_data", "available": available,
                 "offset": offset, "cycle": cycle_info}
 
-    money = _money_block(s, tariff)
+    money = _money_block(s, tariff, cs, ce)
 
     # --- Hoá đơn EVN thật (bảng evn_bills, key 'YYYY-MM') ---------------------
     # label == tháng dương lịch của cs — đúng vì cycle_start_day=1; nếu sau này
@@ -154,17 +154,19 @@ def compute_report(rows: list, curtail_rows: list, bills: list, tariff: EvnTarif
     crows = [r for r in curtail_rows if cs_iso <= r["day"] < ce_iso]
     if crows:
         lost = sum((r.get("lost") or 0) for r in crows)
-        marginal = round(tariff.marginal(s["buy"]))
+        marginal = round(tariff.at(ce - timedelta(days=1)).marginal(s["buy"]))
         curtail = {"lost_kwh": round(lost, 1),
                    "days": sum(1 for r in crows if (r.get("lost") or 0) > 0),
-                   "marginal": marginal, "value": round(lost * marginal)}
+                   "marginal": marginal,
+                   "value": round(tariff.period_cost(s["buy"], cs, ce) - tariff.period_cost(max(0, s["buy"] - lost), cs, ce)),
+                   "valuation_basis": "hypothetical_grid_replacement_not_realized_savings"}
 
     # --- Kỳ liền trước (offset+1): chỉ kèm khi có dữ liệu ---------------------
     prev = None
     pcs, pce = closed_cycle_bounds(today, start_day, offset + 1)
     p = _cycle_sums(rows, pcs.isoformat(), pce.isoformat())
     if p["data_days"] > 0:
-        pmoney = _money_block(p, tariff)
+        pmoney = _money_block(p, tariff, pcs, pce)
 
         def _pct(cur, old):
             return round((cur - old) / old * 100) if old > 0 else None
@@ -184,6 +186,7 @@ def compute_report(rows: list, curtail_rows: list, bills: list, tariff: EvnTarif
                    "buy_kwh": round(s["buy"], 1),
                    "self_pct": _self_pct(s["cons"], s["buy"])},
         "money": money,
+        "tariff": tariff.period_info(cs, ce),
         "evn_bill": evn_bill,
         "curtail": curtail,
         "best_day": {"day": s["best"]["day"], "kwh": round(s["best"]["kwh"], 1)} if s["best"] else None,

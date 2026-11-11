@@ -46,7 +46,10 @@ export default function MoneyPage() {
           history={money.evn_history ?? []}
           solarStart={money.solar_start ?? null}
         />
-        <TierLadderCard tier={money.tier} billNow={money.cycle.bill_now} />
+        <div>
+          <TierLadderCard tier={money.tier} billNow={money.cycle.bill_now} />
+          {money.tariff && <p className="mt-3 text-xs text-zinc-400">{money.tariff.label} · effective {money.tariff.effective_from} · VAT {Math.round(money.tariff.vat * 100)}% included{money.tariff.mixed ? " · transition cycle: estimated allocation by days" : ""}</p>}
+        </div>
       </div>
     </DashboardShell>
   );
