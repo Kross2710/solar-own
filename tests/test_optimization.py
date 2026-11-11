@@ -173,3 +173,40 @@ class ArchiveEndTests(TestCase):
         self.assertEqual(archive_safe_end("2026-09-30", today="2026-09-30"), "2026-09-25")
         self.assertEqual(archive_safe_end("2026-09-01", today="2026-09-30"), "2026-09-01")
         self.assertIsInstance(date.fromisoformat(archive_safe_end("2026-09-30")), date)
+
+class AccuracyTests(TestCase):
+    def test_backtest_scores_match_chart_and_baseline_uses_only_past(self):
+        import numpy as np
+        from providers.forecast import metrics
+        forecaster = SolarForecaster()
+        store = FakeStore()
+        forecaster.fit(store.training_rows(),datetime.now(VN_TZ).date().isoformat())
+        with patch('providers.forecast.walk_forward', side_effect=AssertionError('selected model should be cached')):
+            self.assertIsNotNone(forecaster.backtest_for(forecaster.model_name))
+        result = forecaster.backtest_for('ridge(a=3.0)')
+        self.assertIsNotNone(result)
+        y = np.array([p['actual'] for p in result['points']])
+        pred = np.array([p['pred'] for p in result['points']])
+        self.assertAlmostEqual(metrics(y,pred)['mae'],result['mae'],delta=.03)
+        source = store.training_rows()
+        for i,p in enumerate(result['points']):
+            prefix = source[:result['warmup']+i]
+            self.assertAlmostEqual(p['baseline_pred'],sum(r['kwh'] for r in prefix)/len(prefix),delta=.001)
+        self.assertIsNone(forecaster.backtest_for('not-a-model'))
+        self.assertIsNotNone(forecaster.backtest_for('baseline:climatology'))
+
+    def test_accuracy_initializes_forecast_when_opened_directly(self):
+        runtime = FakeRuntime(FakeStore())
+        with patch.object(forecast_service.fc_mod, "fetch_archive_weather", _no_weather), \
+                patch.object(forecast_service.fc_mod, "fetch_daily_weather", _no_weather):
+            async def open_directly():
+                pending = await forecast_service.build_accuracy(runtime, "baseline:climatology")
+                self.assertFalse(pending["ready"])
+                first_task = runtime.accuracy_init_task
+                await forecast_service.build_accuracy(runtime, "baseline:climatology")
+                self.assertIs(first_task, runtime.accuracy_init_task)
+                await first_task
+                return await forecast_service.build_accuracy(runtime, "baseline:climatology")
+            result = asyncio.run(open_directly())
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["model"], "baseline:climatology")

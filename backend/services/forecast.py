@@ -86,6 +86,7 @@ async def forecast_loop(runtime: AppRuntime) -> None:
         await asyncio.wait_for(runtime.synced.wait(), timeout=WAIT_FOR_SYNC_SECONDS)
     except asyncio.TimeoutError:
         pass
+    first_pass = True
     while True:
         lat, _lon = _location(runtime)
         if lat is None:
@@ -93,7 +94,9 @@ async def forecast_loop(runtime: AppRuntime) -> None:
             continue
         try:
             async with runtime.forecast_lock:
-                await refresh_forecast(runtime)
+                if not first_pass or not runtime.forecaster.ready:
+                    await refresh_forecast(runtime)
+                first_pass = False
         except asyncio.CancelledError:
             raise
         except Exception as error:
@@ -131,3 +134,22 @@ async def build_forecast(runtime: AppRuntime) -> dict[str, Any]:
         "days": predictions,
         "updated_at": forecaster.updated_at,
     }
+
+
+async def build_accuracy(runtime: AppRuntime, model: str | None = None) -> dict[str, Any]:
+    if not runtime.forecaster.ready:
+        task = getattr(runtime, "accuracy_init_task", None)
+        if task is None or task.done():
+            task = asyncio.create_task(build_forecast(runtime))
+            runtime.accuracy_init_task = task
+            def finished(completed):
+                if not completed.cancelled() and completed.exception() is not None:
+                    print("  [accuracy] forecast initialization failed", flush=True)
+            task.add_done_callback(finished)
+        return {"ready": False, "reason": "forecast_not_ready"}
+    name = model or runtime.forecaster.model_name
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, runtime.forecaster.backtest_for, name)
+    if result is None:
+        return {"ready": False, "reason": "unknown_model"}
+    return {"ready": True, **result}

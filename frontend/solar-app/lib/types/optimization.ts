@@ -70,3 +70,11 @@ export type CurtailmentResponse =
       days: number;
       recent: { day: string; lost_kwh: number }[];
     };
+
+
+export type AccuracyResponse = { ready: false; reason: string } | {
+  ready: true; model: string; models: string[]; mae: number; rmse: number; mape: number;
+  r2: number; bias: number; baseline_mae: number; skill_vs_baseline: number | null;
+  n_train: number; warmup: number; n_test: number;
+  points: { day: string; actual: number; pred: number; baseline_pred: number }[];
+};

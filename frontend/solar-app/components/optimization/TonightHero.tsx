@@ -9,7 +9,7 @@ interface TonightHeroProps {
   plan: BatteryPlan | null;
 }
 
-const KIND_LABEL: Record<DayKind, string> = { sunny: "Sunny", mid: "Fair sun", poor: "Little sun" };
+const KIND_LABEL: Record<DayKind, string> = { sunny: "Higher output", mid: "Typical output", poor: "Lower output" };
 const KIND_ICON: Record<DayKind, string> = { sunny: "fa-sun", mid: "fa-cloud-sun", poor: "fa-cloud-rain" };
 // Leave headroom so the larger of usable/need never touches the bar end.
 const BAR_HEADROOM = 1.1;

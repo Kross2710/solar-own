@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   dayOfWeek,
   isFlatForecast,
@@ -25,10 +26,10 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
   const avgPx = avg30 != null ? (avg30 / scale) * BAR_MAX_PX : null;
   const roundedMae = mae != null ? Math.round(mae) : null;
   const note = flat
-    ? `Similar weather ahead · output about the same${roundedMae != null ? ` (±${roundedMae} kWh)` : ""}`
+    ? `Similar weather ahead · output about the same${roundedMae != null ? ` (typical error ${roundedMae} kWh)` : ""}`
     : roundedMae != null
-      ? `may vary ±${roundedMae} kWh with the weather`
-      : "weather-based forecast";
+      ? `typical historical error ${roundedMae} kWh`
+      : "forecast of measured output, limited by load and battery room";
 
   return (
     <Card
@@ -40,6 +41,7 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
         <span className="text-right text-[11px] text-zinc-500">{note}</span>
       </div>
 
+      <p className="mt-2 text-[11px] text-zinc-500">Measured output depends on sunshine, home load and battery room. <Link href="/optimization/accuracy" className="text-pv underline">Forecast accuracy</Link></p>
       <div className="relative mt-4 grid grid-cols-5 gap-1.5">
         {shown.map((day) => {
           const icon = weatherIcon(day.wcode);

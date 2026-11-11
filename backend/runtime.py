@@ -30,6 +30,7 @@ class AppRuntime:
     latest: dict[str, Any] | None = None
     live_fallback_on: bool = False
     forecaster: SolarForecaster = field(default_factory=SolarForecaster)
+    accuracy_init_task: asyncio.Task[Any] | None = None
     # Weather fetch + training must not overlap (loop vs. first /api/forecast request).
     forecast_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     # Set after the first history sync, so training does not run on stale data.

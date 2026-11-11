@@ -92,7 +92,7 @@ export default function DashboardShell({
                 </p>
                 <nav className="mt-8 flex flex-col gap-1" aria-label="Sections">
                     {NAV_ITEMS.map(({ href, label, icon }) => {
-                        const active = pathname === href;
+                        const active = pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
                         return (
                             <Link
                                 key={href}
@@ -146,7 +146,7 @@ export default function DashboardShell({
                     aria-label="Sections"
                 >
                     {NAV_ITEMS.map(({ href, label, icon }) => {
-                        const active = pathname === href;
+                        const active = pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
                         return (
                             <Link
                                 key={href}
