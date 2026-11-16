@@ -30,3 +30,6 @@ build/
 
 # Private forecast research cache
 research-data/
+
+# Local presentation files
+*.pptx
