@@ -52,6 +52,8 @@ export interface MoneyTotal {
 }
 
 export interface MoneyPayback {
+  scenarios: { method: string; monthly_savings: number; eta: string }[];
+  scenario_note: string;
   invest: number;
   recovered: number;
   remaining: number;
@@ -85,6 +87,8 @@ export interface MoneyResponse {
   marginal_cons: number;
   marginal_buy: number;
   tier: MoneyTier;
+  projected_tier: MoneyTier;
+  tariff: { label: string; effective_from: string; vat: number; includes_vat: boolean; mixed: boolean; allocation: string };
   prev_cycle: MoneyPrevCycle;
   today: MoneyToday;
   cycle: MoneyCycle;

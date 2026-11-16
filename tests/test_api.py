@@ -128,4 +128,4 @@ class ApiSmokeTests(TestCase):
 
         self.assertEqual(hourly["currency"], "VND")
         self.assertEqual(len(hourly["hours"]), 24)
-        self.assertGreater(hourly["marginal"], 0)
+        self.assertIsNone(hourly["marginal"])  # no purchase data in the current cycle

@@ -16,7 +16,8 @@ def _mins(t: str) -> Optional[int]:
     """'HH:MM' -> phút trong ngày."""
     try:
         h, m = str(t).split(":")[:2]
-        return int(h) * 60 + int(m)
+        hour, minute = int(h), int(m)
+        return hour * 60 + minute if 0 <= hour < 24 and 0 <= minute < 60 else None
     except Exception:
         return None
 
@@ -85,7 +86,8 @@ def estimate_curtailment(points: list, reserve_pct: float = 20.0,
     return {
         "lost_kwh": round(lost_wh * dt_h / 1000.0, 1),
         "actual_kwh": actual_kwh,
-        "potential_kwh": round(potential_wh * dt_h / 1000.0, 1),
+        "potential_kwh": round(actual_kwh + round(lost_wh * dt_h / 1000.0, 1), 1),
+        "envelope_kwh": round(potential_wh * dt_h / 1000.0, 1),
         "full_at": full_at,
         "samples": len(rows),
     }

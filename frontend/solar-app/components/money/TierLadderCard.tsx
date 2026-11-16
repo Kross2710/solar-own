@@ -3,6 +3,7 @@ import { buildTierRows, buildTierSegments, TIER_WARN_KWH, TierSegment } from "@/
 import DetailsDisclosure from "@/components/money/DetailsDisclosure";
 import { fmtMoney, fmtNum } from "@/lib/format";
 import { MoneyTier } from "@/lib/types/money";
+import Card from "@/components/Card";
 
 function segmentStyle(segment: TierSegment) {
   const style: CSSProperties = { flex: `${segment.widthPct} 1 0`, minWidth: 0 };
@@ -13,8 +14,8 @@ function segmentStyle(segment: TierSegment) {
 }
 
 const segmentClass: Record<TierSegment["state"], string> = {
-  done: "bg-[#7dd3fc]/75 text-[#04060c] font-bold",
-  current: "text-[#04060c] font-bold shadow-[0_0_12px_rgba(255,199,107,0.3)]",
+  done: "bg-load/75 text-ink font-bold",
+  current: "text-ink font-bold shadow-[0_0_12px_rgba(255,199,107,0.3)]",
   future: "bg-white/5 text-zinc-500 font-semibold",
 };
 
@@ -33,10 +34,10 @@ function TierMessage({ tier }: { tier: MoneyTier }) {
   const nextPrice = tier.prices[tier.index + 1];
 
   return (
-    <p className={`mt-3 text-[12px] leading-relaxed ${near ? "font-semibold text-[#ffcaa6]" : "text-zinc-300"}`}>
-      {near && <i className="fa-solid fa-triangle-exclamation mr-1.5 text-[#ffc76b]" />}
+    <p className={`mt-3 text-[12px] leading-relaxed ${near ? "font-semibold text-pv" : "text-zinc-300"}`}>
+      {near && <i className="fa-solid fa-triangle-exclamation mr-1.5 text-pv" />}
       Bought <strong className="text-zinc-100">{bought} kWh</strong> —{" "}
-      <strong className="text-[#ffc76b]">{Math.round(tier.to_next_kwh)} kWh</strong> to go until tier {tier.index + 2}
+      <strong className="text-pv">{Math.round(tier.to_next_kwh)} kWh</strong> to go until tier {tier.index + 2}
       {nextPrice != null && (
         <span className="text-zinc-400"> ({fmtMoney(nextPrice)}/kWh, +{fmtMoney(tier.next_jump)})</span>
       )}
@@ -56,7 +57,7 @@ function TierBreakdown({ tier, billNow }: { tier: MoneyTier; billNow: number }) 
 
         {rows.map((row) => {
           const tone = row.isCurrent
-            ? "font-bold text-[#ffc76b]"
+            ? "font-bold text-pv"
             : row.kwh <= 0
               ? "text-zinc-300 opacity-40"
               : "text-zinc-300";
@@ -89,16 +90,16 @@ export default function TierLadderCard({ tier, billNow }: { tier: MoneyTier; bil
   const segments = buildTierSegments(tier);
 
   return (
-    <section
-      className="rounded-[22px] border border-white/10 border-t-amber-300/20 bg-[#0a0e18]/90 p-3 shadow-2xl backdrop-blur-xl sm:p-4"
+    <Card
+      accent="pv"
       aria-labelledby="price-tiers"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-zinc-100" id="price-tiers">
-          <i className="fa-solid fa-stairs mr-1 text-[#ffc76b]" />
+          <i className="fa-solid fa-stairs mr-1 text-pv" />
           Price tiers
         </h2>
-        <span className="text-xs font-bold tabular-nums text-[#ffc76b]">{fmtMoney(tier.cur_price)}/kWh</span>
+        <span className="text-xs font-bold tabular-nums text-pv">{fmtMoney(tier.cur_price)}/kWh</span>
       </div>
 
       <div className="mt-3 flex gap-1" role="img" aria-label={`Tier ${tier.index + 1} of ${tier.count}`}>
@@ -119,6 +120,6 @@ export default function TierLadderCard({ tier, billNow }: { tier: MoneyTier; bil
       <DetailsDisclosure>
         <TierBreakdown tier={tier} billNow={billNow} />
       </DetailsDisclosure>
-    </section>
+    </Card>
   );
 }

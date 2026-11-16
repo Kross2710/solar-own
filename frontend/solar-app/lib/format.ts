@@ -1,7 +1,7 @@
 export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function parseDateMonth(dateString: string) {
-    const [year, month, day] = dateString.split("-");
+    const [, month, day] = dateString.split("-");
     return `${MONTH_NAMES[parseInt(month) - 1]} ${parseInt(day)}`;
 }
 

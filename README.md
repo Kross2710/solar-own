@@ -27,6 +27,7 @@ On startup the API fills missing SEMS history, patches recent sample gaps, rebui
 | `/history` | Daily generation, month and year totals, self-powered days |
 | `/money` | Cycle savings, projected EVN bill, the last real bill, and the current tariff tier |
 | `/optimization` | Tonight's battery plan, best hours to run loads, wasted sun, and the next days' yield |
+| `/optimization/accuracy` | Walk-forward actual/predicted chart, model selector and earlier-days baseline |
 | `/assistant` | Rule-based notices and a streaming chat that can look up history before answering |
 
 The gear in the header opens Settings: text size, battery reserve used by the dashboard estimates (10–80%, written only to `config.json`), manual sync, CSV export of daily history, and system status. Text size is stored in the browser.
@@ -129,4 +130,26 @@ Leave `station_id` empty to use the first station on the account.
 ```bash
 source .venv/bin/activate
 python -m unittest discover -s tests
+```
+
+
+## Dated EVN tariffs and forecast diagnostics (November 2026)
+
+The built-in residential schedule retains the legacy six-tier prices and applies the five-tier schedule from **2026-11-01**: 100/200/400/700/open-ended kWh at 1,901/2,289/2,894/3,456/3,844 VND before VAT. Sources: [EVN price publication](https://www.evn.com.vn/d/vi-VN/news/Gia-ban-le-dien-cho-cac-nhom-khach-hang-su-dung-dien-theo-Quyet-dinh-so-2892QD-BCT-ngay-31102026-cua-Bo-Cong-Thuong-60-28-510170) and [EVNSPC tariff information](https://cskh.evnspc.vn/TraCuu/ThongTinGiaDien). VAT remains the configured rate (8% default); future projections hold that assumption fixed, rather than predicting future policy.
+
+Existing configurations whose tiers match the old EVN schedule automatically receive this dated schedule. Other custom tier tables stay custom. Explicit `evn.schedules` entries may define `effective_from`, `tiers`, `vat` and `label` for future changes. Historical monthly savings and real-bill comparisons select their own period's schedule. A cycle spanning a change date uses estimated allocation by days, prorating both volume and tier quotas; it is labeled approximate because the change-date EVN meter reading is unavailable. Actual EVN bills remain the source of truth.
+
+Optimization prices use projected billing-cycle purchases rather than trailing-30-day purchases. A hypothetical displaced grid quantity is valued with a difference between tiered bills, capped at projected purchases. Curtailment is shown primarily in kWh; its tariff equivalent is not cash lost or a promise of recoverable savings. Residential grid prices are not time-of-day prices. All site clocks, battery finish times and best-hour markers use Vietnam time regardless of browser timezone.
+
+`/optimization/accuracy` shows model-selection backtests, not independent holdout scores. Archived weather differs from the forecasts available at issue time. Chart and error metrics use the same raw predictions; serving still clips forecasts as before. Read the [37-day data-quality experiment and gate decision](docs/forecast-diagnostic-2026-11-08.md) before pursuing a potential/usable production model. Production training/selection is unchanged.
+
+Verification:
+
+```bash
+.venv/bin/python -m unittest discover -s tests
+TZ=America/Los_Angeles node --test frontend/solar-app/tests/site-time.test.mjs
+cd frontend/solar-app
+npx tsc --noEmit
+npm run lint
+npm run build
 ```

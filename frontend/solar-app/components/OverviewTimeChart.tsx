@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type ApexCharts from "apexcharts";
 import type { ApexOptions } from "apexcharts";
+import { COLORS } from "@/lib/colors";
 
 export type OverviewChartMode = "Power" | "Battery";
 
@@ -86,8 +87,8 @@ export default function OverviewTimeChart({
         },
         series: isBattery ? batterySeries : powerSeries,
         colors: isBattery
-          ? ["#b8a6ff", "rgba(255,255,255,0.38)"]
-          : ["#ffc76b", "#7dd3fc"],
+          ? [COLORS.batt, "rgba(255,255,255,0.38)"]
+          : [COLORS.pv, COLORS.load],
         dataLabels: { enabled: false },
         stroke: {
           curve: "smooth",
@@ -123,7 +124,7 @@ export default function OverviewTimeChart({
             datetimeUTC: false,
             format: "HH:mm",
             style: {
-              colors: "#707a8e",
+              colors: COLORS.dim,
               fontSize: "10px",
             },
           },
@@ -135,7 +136,7 @@ export default function OverviewTimeChart({
               tickAmount: 4,
               labels: {
                 formatter: (value: number) => `${Math.round(value)}%`,
-                style: { colors: ["#707a8e"], fontSize: "10px" },
+                style: { colors: [COLORS.dim], fontSize: "10px" },
               },
             }
           : {
@@ -147,7 +148,7 @@ export default function OverviewTimeChart({
                   value >= 1000
                     ? `${(value / 1000).toFixed(1)}kW`
                     : `${Math.round(value)}W`,
-                style: { colors: ["#707a8e"], fontSize: "10px" },
+                style: { colors: [COLORS.dim], fontSize: "10px" },
               },
             },
         legend: {
@@ -155,7 +156,7 @@ export default function OverviewTimeChart({
           position: "bottom",
           horizontalAlign: "center",
           fontSize: "11px",
-          labels: { colors: "#9aa3b5" },
+          labels: { colors: COLORS.muted },
           itemMargin: { horizontal: 10, vertical: 2 },
         },
         tooltip: {
@@ -180,7 +181,7 @@ export default function OverviewTimeChart({
           text: "No history data",
           align: "center",
           verticalAlign: "middle",
-          style: { color: "#707a8e", fontSize: "12px" },
+          style: { color: COLORS.dim, fontSize: "12px" },
         },
       };
 

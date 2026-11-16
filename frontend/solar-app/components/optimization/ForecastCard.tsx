@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   dayOfWeek,
   isFlatForecast,
@@ -5,6 +6,7 @@ import {
   weatherIcon,
 } from "@/app/optimization/optimization.helpers";
 import { ForecastDay } from "@/lib/types/optimization";
+import Card from "@/components/Card";
 
 const DAYS_SHOWN = 5;
 const BAR_MAX_PX = 44;
@@ -24,14 +26,14 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
   const avgPx = avg30 != null ? (avg30 / scale) * BAR_MAX_PX : null;
   const roundedMae = mae != null ? Math.round(mae) : null;
   const note = flat
-    ? `Similar weather ahead · output about the same${roundedMae != null ? ` (±${roundedMae} kWh)` : ""}`
+    ? `Similar weather ahead · output about the same${roundedMae != null ? ` (typical error ${roundedMae} kWh)` : ""}`
     : roundedMae != null
-      ? `may vary ±${roundedMae} kWh with the weather`
-      : "weather-based forecast";
+      ? `typical historical error ${roundedMae} kWh`
+      : "forecast of measured output, limited by load and battery room";
 
   return (
-    <section
-      className="rounded-[22px] border border-white/10 border-t-amber-300/20 bg-[#0a0e18]/90 p-3 shadow-2xl backdrop-blur-xl sm:p-4"
+    <Card
+      accent="pv"
       aria-labelledby="next-days"
     >
       <div className="flex items-baseline justify-between gap-3">
@@ -39,6 +41,7 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
         <span className="text-right text-[11px] text-zinc-500">{note}</span>
       </div>
 
+      <p className="mt-2 text-[11px] text-zinc-500">Measured output depends on sunshine, home load and battery room. <Link href="/optimization/accuracy" className="text-pv underline">Forecast accuracy</Link></p>
       <div className="relative mt-4 grid grid-cols-5 gap-1.5">
         {shown.map((day) => {
           const icon = weatherIcon(day.wcode);
@@ -64,7 +67,7 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
                   />
                 )}
                 <span
-                  className="mt-auto w-3 rounded-t-[3px] bg-gradient-to-t from-[#ffc76b]/40 to-[#ffc76b]"
+                  className="mt-auto w-3 rounded-t-[3px] bg-gradient-to-t from-pv/40 to-pv"
                   style={{ height: barPx }}
                   aria-hidden="true"
                 />
@@ -77,7 +80,7 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
               <p className="text-[10px] tabular-nums text-zinc-500">
                 {day.tmax != null ? `${Math.round(day.tmax)}°` : "–"}/{day.tmin != null ? `${Math.round(day.tmin)}°` : "–"}
               </p>
-              <p className="h-4 text-[10px] tabular-nums text-[#7dd3fc]">
+              <p className="h-4 text-[10px] tabular-nums text-load">
                 {day.rain_prob != null && day.rain_prob >= RAIN_SHOWN_FROM_PCT && (
                   <>
                     <i className="fa-solid fa-umbrella mr-0.5" />
@@ -96,6 +99,6 @@ export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
           30-day average {Math.round(avg30)} kWh
         </p>
       )}
-    </section>
+    </Card>
   );
 }

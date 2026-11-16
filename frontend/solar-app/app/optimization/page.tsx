@@ -1,5 +1,7 @@
 "use client";
 
+import { siteClock } from "@/lib/time";
+
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import BestHoursCard from "@/components/optimization/BestHoursCard";
@@ -46,12 +48,12 @@ export default function OptimizationPage() {
   );
   const kind = dayKind(qual, tomorrow?.kwh ?? null, ready?.avg30_kwh ?? null);
   const plan = batteryPlan(metrics, ready?.night_need_kwh ?? null);
-  const suggestions = buildSuggestions({ metrics, kind, tier: money?.tier, hour: now.getHours() });
+  const suggestions = buildSuggestions({ metrics, kind, tier: money?.projected_tier ?? money?.tier, hour: siteClock(now).hour });
   const cells = useMemo(() => (hourly ? hourCells(hourly.hours, hourly.marginal) : []), [hourly]);
 
   if (metricsLoading && forecastLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-zinc-400">
         Connecting to Solar...
       </div>
     );
@@ -59,7 +61,7 @@ export default function OptimizationPage() {
 
   if (metricsError && !forecast) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#04060c] font-sans text-red-400">
+      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
         Can&apos;t get data from Backend
       </div>
     );
@@ -67,16 +69,26 @@ export default function OptimizationPage() {
 
   return (
     <DashboardShell status={metricsError ? "error" : "online"} source="">
-      <TonightHero
-        kind={kind}
-        tomorrowKwh={tomorrow?.kwh ?? null}
-        advice={planAdvice(kind, plan?.enough ?? null)}
-        plan={plan}
-      />
-      <DoNowCard suggestions={suggestions} />
-      <BestHoursCard cells={cells} now={now} />
-      {curtailment?.supported && <WastedSunCard data={curtailment} />}
-      {ready && <ForecastCard days={ready.days} avg30={ready.avg30_kwh} mae={ready.quality.mae ?? null} />}
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
+        <TonightHero
+          kind={kind}
+          tomorrowKwh={tomorrow?.kwh ?? null}
+          advice={planAdvice(kind, plan?.enough ?? null)}
+          plan={plan}
+        />
+        <div className="flex flex-col gap-7">
+          <DoNowCard suggestions={suggestions} />
+          <BestHoursCard cells={cells} now={now} />
+        </div>
+      </div>
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-start">
+        {curtailment?.supported && <WastedSunCard data={curtailment} />}
+        {ready && (
+          <div className={curtailment?.supported ? "" : "xl:col-span-2"}>
+            <ForecastCard days={ready.days} avg30={ready.avg30_kwh} mae={ready.quality.mae ?? null} />
+          </div>
+        )}
+      </div>
     </DashboardShell>
   );
 }

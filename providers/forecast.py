@@ -538,7 +538,7 @@ class SolarForecaster:
         self.n_train = int(len(y))
         self.updated_at = today or date.today().isoformat()
         # Gán NGUYÊN KHỐI (một phép gán) -> backtest_for() không bao giờ thấy nửa cũ nửa mới.
-        self._bt_state = (dates, X, y, res["warmup"], self.cap, {})
+        backtest_cache = {}
 
         # Chuỗi dự báo-vs-thực-tế cho overlay (walk-forward của CHÍNH mô hình được chọn,
         # train trên [0..i) -> dự báo i: không leakage). bake_off đã chạy walk_forward cho
@@ -553,6 +553,7 @@ class SolarForecaster:
                  "pred": round(min(max(float(yp[i]), 0.0), self.cap), 1)}
                 for i in range(len(yt))
             ]
+            backtest_cache[self.model_name] = self._accuracy_result(self.model_name, dates, y, yt, yp, res["warmup"])
         except Exception:
             self.backtest = []
 
@@ -600,6 +601,8 @@ class SolarForecaster:
             "source": "train=archive(ERA5)·serve=forecast",
             "board": res["board"],
         }
+        # Publish the data snapshot only after its selected-model cache is complete.
+        self._bt_state = (dates, X, y, res["warmup"], self.cap, backtest_cache)
         self.ready = True
         return True
 
@@ -618,30 +621,48 @@ class SolarForecaster:
         state = self._bt_state          # <- đọc 1 lần; mọi thứ dưới đây dùng snapshot này
         if not self.ready or state is None:
             return None
-        dates, X, y, warmup, cap, cache = state
+        dates, X, y, warmup, _cap, cache = state
         hit = cache.get(name)
         if hit is not None:
             return hit
         entry = _candidates().get(name)
-        if entry is None:
+        if name == "baseline:climatology":
+            yt, yp = _wf_climatology(y, warmup)
+        elif name == "baseline:persistence":
+            yt, yp = _wf_persistence(y, warmup)
+        elif entry is not None:
+            yt, yp = walk_forward(X, y, entry[0], warmup)
+        else:
             return None
-        yt, yp = walk_forward(X, y, entry[0], warmup)
+        out = self._accuracy_result(name, dates, y, yt, yp, warmup)
+        cache[name] = out               # cache của ĐÚNG thế hệ đã đọc (không đụng self)
+        return out
+
+    @staticmethod
+    def _accuracy_result(name, dates, y, yt, yp, warmup) -> dict:
         bdates = dates[warmup:]
-        cap = cap or float("inf")
         m = metrics(yt, yp)
+        _, baseline = _wf_climatology(y, warmup)
+        baseline_metrics = metrics(yt, baseline)
         out = {
             "model": name,
+            "models": list(_candidates()) + ["baseline:climatology", "baseline:persistence"],
+            "n_train": len(y), "warmup": warmup, "n_test": len(yt),
+            "target": "measured_output", "evaluation": "walk-forward model-selection backtest",
+            "weather": "historical archive, not stored forecast-time weather",
+            "baseline_mae": round(baseline_metrics["mae"], 2),
+            "skill_vs_baseline": None if not baseline_metrics["mae"] else round(1 - m["mae"] / baseline_metrics["mae"], 4),
             "mae": round(m["mae"], 2), "rmse": round(m["rmse"], 2),
             "mape": round(m["mape"], 1), "r2": round(m["r2"], 3),
             "bias": round(m["bias"], 2),
             "points": [
                 {"day": bdates[i],
                  "actual": round(float(yt[i]), 1),
-                 "pred": round(min(max(float(yp[i]), 0.0), cap), 1)}
+                 "pred": round(float(yp[i]), 3),
+                 "baseline_pred": round(float(baseline[i]), 3)}
                 for i in range(len(yt))
             ],
         }
-        cache[name] = out               # cache của ĐÚNG thế hệ đã đọc (không đụng self)
         return out
 
     def predict_one(self, day: str, weather: dict) -> Optional[float]:

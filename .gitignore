@@ -27,3 +27,9 @@ build/
 .DS_Store
 .vscode/
 .idea/
+
+# Private forecast research cache
+research-data/
+
+# Local presentation files
+*.pptx

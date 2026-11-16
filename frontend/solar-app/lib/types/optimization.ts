@@ -49,7 +49,7 @@ export interface HourlyPoint {
 
 export interface HourlyResponse {
   hours: HourlyPoint[];
-  marginal: number;            // đ/kWh
+  marginal: number | null;            // đ/kWh
   currency: string;
 }
 
@@ -58,7 +58,8 @@ export type CurtailmentResponse =
   | {
       supported: true;
       currency: string;
-      marginal: number;
+      marginal: number | null;
+      today_grid_reduction_value: number | null;
       today: {
         lost_kwh: number | null;
         full_at: string | null; // "HH:MM" when the battery hit ~full
@@ -69,3 +70,11 @@ export type CurtailmentResponse =
       days: number;
       recent: { day: string; lost_kwh: number }[];
     };
+
+
+export type AccuracyResponse = { ready: false; reason: string } | {
+  ready: true; model: string; models: string[]; mae: number; rmse: number; mape: number;
+  r2: number; bias: number; baseline_mae: number; skill_vs_baseline: number | null;
+  n_train: number; warmup: number; n_test: number;
+  points: { day: string; actual: number; pred: number; baseline_pred: number }[];
+};

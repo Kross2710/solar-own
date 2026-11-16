@@ -20,7 +20,7 @@ function ActionCard({
   return (
     <div className={`${aiBubble} flex flex-col gap-1.5 whitespace-normal`}>
       <p className="font-semibold">
-        <i className="fa-solid fa-sliders mr-1.5 text-[#ffc76b]" />
+        <i className="fa-solid fa-sliders mr-1.5 text-pv" />
         {actionLabel(action)}
       </p>
       {action.reason && <p className="text-[13px] text-zinc-300">{action.reason}</p>}
@@ -28,7 +28,7 @@ function ActionCard({
       {state === "pending" || state === "applying" ? (
         <div className="mt-1 flex gap-2">
           <button
-            className="rounded-full bg-[#ffc76b] px-4 py-1.5 text-[13px] font-semibold text-[#04060c] disabled:opacity-60"
+            className="rounded-full bg-pv px-4 py-1.5 text-[13px] font-semibold text-ink disabled:opacity-60"
             disabled={state === "applying"}
             onClick={() => onApply(entry.id)}
             type="button"
@@ -45,7 +45,7 @@ function ActionCard({
           </button>
         </div>
       ) : (
-        <p className={`text-[13px] ${state === "failed" ? "text-[#fb8a95]" : "text-emerald-400"}`} role="status">
+        <p className={`text-[13px] ${state === "failed" ? "text-grid-in" : "text-good"}`} role="status">
           {state === "applied" && `Done — battery reserve is now ${pct}%.`}
           {state === "dismissed" && "Suggestion dismissed."}
           {state === "failed" && "Couldn't apply the change — try again later."}
@@ -73,7 +73,7 @@ export default function ChatLog({ greeting, entries, live, onApply, onDismiss }:
         }
         if (entry.role === "user") {
           return (
-            <p className={`${bubble} self-end rounded-br-md bg-[#ffc76b] text-[#04060c]`} key={entry.id}>
+            <p className={`${bubble} self-end rounded-br-md bg-pv text-ink`} key={entry.id}>
               {entry.content}
             </p>
           );
@@ -91,7 +91,7 @@ export default function ChatLog({ greeting, entries, live, onApply, onDismiss }:
           <p className={`${aiBubble} text-zinc-400`}>
             {live.status ? (
               <span className="italic">
-                <i className="fa-solid fa-magnifying-glass mr-1.5 text-[#7dd3fc]" />
+                <i className="fa-solid fa-magnifying-glass mr-1.5 text-load" />
                 {toolLabel(live.status)}
               </span>
             ) : (

@@ -1,3 +1,4 @@
+import { siteClock, siteTime } from "@/lib/time";
 import { fmtMoney } from "@/lib/format";
 import { MetricsResponse } from "@/lib/types";
 import { MoneyTier } from "@/lib/types/money";
@@ -46,7 +47,7 @@ export function dayKind(qual: ForecastQual | null, kwh: number | null, avg30: nu
 
 export function planTitle(kind: DayKind | null, kwh: number | null): string {
   if (!kind) return "Tomorrow's forecast";
-  const label = kind === "sunny" ? "Sunny tomorrow" : kind === "poor" ? "Little sun tomorrow" : "Fair sun tomorrow";
+  const label = kind === "sunny" ? "Higher output tomorrow" : kind === "poor" ? "Lower output tomorrow" : "Typical output tomorrow";
   return kwh != null ? `${label} · ~${Math.round(kwh)} kWh` : label;
 }
 
@@ -76,6 +77,63 @@ export function batteryPlan(metrics: MetricsResponse | undefined, needKwh: numbe
   };
 }
 
+// Below this the battery is treated as idle (inverter standby draw).
+const BATTERY_IDLE_W = 50;
+// Charge that would finish after this hour is too slow to count as "full today".
+const SUN_LAST_HOUR = 18;
+const RUNTIME_CAP_MIN = 12 * 60;
+const ROUND_MIN = 10;
+
+export interface BatteryOutlook {
+  title: string;
+  detail: string;
+}
+
+function clockIn(now: Date, minutes: number): Date {
+  return new Date(Math.round((now.getTime() + minutes * 60_000) / (ROUND_MIN * 60_000)) * ROUND_MIN * 60_000);
+}
+
+function fmtClock(at: Date): string {
+  return siteTime(at);
+}
+
+// How long the battery lasts at the current load, or when it will be full.
+export function batteryOutlook(metrics: MetricsResponse | undefined, now: Date): BatteryOutlook | null {
+  const soc = metrics?.battery_soc;
+  const capacity = metrics?.battery_capacity_kwh;
+  if (soc == null || !capacity) return null;
+
+  const reserve = metrics?.battery_reserve_percent ?? DEFAULT_RESERVE_PCT;
+  const usableKwh = ((soc - reserve) / 100) * capacity;
+  const battKw = (metrics?.battery_power_w ?? 0) / 1000;
+
+  if (battKw * 1000 < -BATTERY_IDLE_W) {
+    if (usableKwh <= 0) return { title: `Battery at reserve · ${soc}%`, detail: "the home runs on the grid now" };
+    const minutes = (usableKwh / -battKw) * 60;
+    if (minutes > RUNTIME_CAP_MIN) return { title: "Battery lasts 12h+", detail: `${soc}% at this load` };
+    const rounded = Math.max(ROUND_MIN, Math.round(minutes / ROUND_MIN) * ROUND_MIN);
+    return {
+      title: `Battery lasts ~${fmtDuration(rounded)}`,
+      detail: `reaches ${reserve}% around ${fmtClock(clockIn(now, minutes))} at this load`,
+    };
+  }
+
+  if (battKw * 1000 > BATTERY_IDLE_W) {
+    const minutes = (((100 - soc) / 100) * capacity / battKw) * 60;
+    const fullAt = clockIn(now, minutes);
+    if (siteClock(fullAt).day !== siteClock(now).day || siteClock(fullAt).hour >= SUN_LAST_HOUR) {
+      return { title: `Charging · ${soc}%`, detail: `${battKw.toFixed(1)} kW — too slow to fill today` };
+    }
+    return { title: `Full around ${fmtClock(fullAt)}`, detail: `charging ${battKw.toFixed(1)} kW · ${soc}% now` };
+  }
+
+  if (soc >= BATTERY_FULL_PCT) return { title: `Battery full · ${soc}%`, detail: "idle" };
+  return {
+    title: `Battery ${soc}%`,
+    detail: usableKwh > 0 ? `idle · ${usableKwh.toFixed(1)} kWh above the ${reserve}% reserve` : "idle at the reserve",
+  };
+}
+
 export function planAdvice(kind: DayKind | null, enough: boolean | null): string {
   if (!kind) return "Waiting for tomorrow's forecast to suggest tonight's battery plan…";
   if (enough === false) {
@@ -96,7 +154,7 @@ export function planAdvice(kind: DayKind | null, enough: boolean | null): string
 const SURPLUS_KW = 1.2;
 const BATTERY_FULL_PCT = 95;
 // Within this many kWh of the next tier, evening kWh are priced at the next tier.
-const TIER_NEAR_KWH = 30;
+
 
 export type SuggestionTone = "load" | "batt" | "warn";
 
@@ -129,28 +187,28 @@ export function buildSuggestions({
   const surplusKw = (pv - load) / 1000;
   const batteryFull = (metrics?.battery_soc ?? 0) >= BATTERY_FULL_PCT;
 
-  if (surplusKw > SURPLUS_KW && hour >= 8 && hour <= 16) {
+  if (surplusKw > SURPLUS_KW && batteryFull && hour >= 8 && hour <= 16) {
     out.push({
       id: "wash-now",
       icon: "fa-shirt",
       tone: "load",
-      title: "Run the washer + dryer now",
-      detail: `${surplusKw.toFixed(1)} kW of spare sun — running them is free`,
+      title: "Use spare solar for a flexible load",
+      detail: `${surplusKw.toFixed(1)} kW of spare sun — use it for a load you would otherwise run later`,
       when: "Now",
       isNow: true,
-      value: "0 đ",
+      value: "Spare sun",
       valueTone: "good",
     });
-  } else if (hour < 8 && (kind === "sunny" || batteryFull)) {
+  } else if (hour < 8 && kind === "sunny") {
     out.push({
       id: "wash-later",
       icon: "fa-shirt",
       tone: "load",
       title: "Batch heavy loads into 10:00–14:00",
-      detail: "the sunniest window — powered by sun, costs nothing",
+      detail: "usually the sunniest window — check live surplus before starting",
       when: "10–14h",
       isNow: false,
-      value: "0 đ",
+      value: "Spare sun",
       valueTone: "good",
     });
   }
@@ -164,23 +222,22 @@ export function buildSuggestions({
       detail: "drop the AC 1–2° while the sun is out, so the battery works less tonight",
       when: "Before 15h",
       isNow: true,
-      value: "−15%",
+      value: "Shift load",
       valueTone: "neutral",
     });
   }
 
-  if (tier && tier.prices.length) {
-    const nearNext = tier.to_next_kwh != null && tier.to_next_kwh < TIER_NEAR_KWH;
-    const price = tier.prices[Math.min(tier.index + (nearNext ? 1 : 0), tier.prices.length - 1)];
-    const tierNumber = Math.min(tier.index + (nearNext ? 2 : 1), tier.count);
+  const plan = batteryPlan(metrics, null);
+  if (tier && tier.prices.length && hour >= 18 && hour < 23 && plan && plan.usableKwh < 3) {
+    const price = tier.cur_price;
     out.push({
       id: "avoid-evening",
       icon: "fa-plug-circle-xmark",
       tone: "warn",
-      title: "Avoid 21:00–23:00",
-      detail: `battery running low — each kWh then costs tier ${tierNumber} price`,
-      when: "21–23h",
-      isNow: hour >= 21 && hour < 23,
+      title: "Battery low — move flexible loads to daylight",
+      detail: "estimated grid price at projected cycle use; residential rates do not change by hour",
+      when: "This evening",
+      isNow: true,
       value: `${fmtMoney(price)}/kWh`,
       valueTone: "bad",
     });
@@ -209,16 +266,16 @@ export interface HourCell {
   cost: string;
 }
 
-export function hourCells(hours: HourlyPoint[], marginal: number): HourCell[] {
-  const heavyCost = fmtMoney(Math.round(HEAVY_LOAD_KW * marginal));
+export function hourCells(hours: HourlyPoint[], marginal: number | null): HourCell[] {
+  const heavyCost = marginal == null ? null : fmtMoney(Math.round(HEAVY_LOAD_KW * marginal));
 
   return hours.map(({ hour, pv, load, grid }) => {
     if (grid == null) return { hour, level: "none", description: "no data yet", cost: "" };
     if (grid <= CHEAP_GRID_W && (pv ?? 0) >= (load ?? 0)) {
-      return { hour, level: "cheap", description: "spare sun covers it", cost: "≈ 0 đ" };
+      return { hour, level: "cheap", description: "usually supplied by solar", cost: "check live surplus" };
     }
     if (grid <= MID_GRID_W) return { hour, level: "mid", description: "the battery covers it", cost: "uses tonight's charge" };
-    return { hour, level: "dear", description: "buying from the grid", cost: `running 1.5kW ~${heavyCost}/h` };
+    return { hour, level: "dear", description: "buying from the grid", cost: heavyCost == null ? "grid price unavailable" : `1.5kW ~${heavyCost}/h at projected use` };
   });
 }
 
@@ -248,7 +305,8 @@ export function bestWindow(cells: HourCell[]): HourWindow | null {
 
 // Minutes left in the window if `now` falls inside it.
 export function minutesLeftInWindow(window: HourWindow, now: Date): number | null {
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const clock = siteClock(now);
+  const minutes = clock.hour * 60 + clock.minute;
   if (minutes < window.from * 60 || minutes >= window.to * 60) return null;
   return window.to * 60 - minutes;
 }
@@ -278,7 +336,7 @@ export function isFlatForecast(days: ForecastDay[]): boolean {
 }
 
 export function dayOfWeek(iso: string): string {
-  return DAY_NAMES[new Date(`${iso}T00:00:00`).getDay()];
+  return DAY_NAMES[new Date(`${iso}T00:00:00Z`).getUTCDay()];
 }
 
 export interface WeatherIcon {
@@ -287,9 +345,9 @@ export interface WeatherIcon {
 }
 
 export function weatherIcon(code: number | null | undefined): WeatherIcon {
-  const amber = "text-[#ffc76b]";
+  const amber = "text-pv";
   const gray = "text-zinc-500";
-  const blue = "text-[#7dd3fc]";
+  const blue = "text-load";
   if (code == null) return { icon: "fa-cloud-sun", className: amber };
   if (code === 0) return { icon: "fa-sun", className: amber };
   if (code <= 2) return { icon: "fa-cloud-sun", className: amber };

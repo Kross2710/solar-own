@@ -4,11 +4,12 @@ import { useEffect, useRef } from "react";
 import type ApexCharts from "apexcharts";
 import type { ApexOptions } from "apexcharts";
 import { cycleMonthLabel, cycleMonthYearLabel } from "@/app/money/money.helpers";
+import { COLORS } from "@/lib/colors";
 import { fmtMoney } from "@/lib/format";
 import { MoneyEvnHistoryItem } from "@/lib/types/money";
 
-const BEFORE_SOLAR = "#fb8a95";
-const WITH_SOLAR = "#34d399";
+const BEFORE_SOLAR = COLORS.gridIn;
+const WITH_SOLAR = COLORS.good;
 
 function axisMoney(value: number): string {
   if (value >= 1_000_000) return `${Math.round(value / 100_000) / 10}M`;
@@ -73,7 +74,7 @@ export default function BillHistoryChart({ history, solarStart }: BillHistoryCha
             rotate: 0,
             hideOverlappingLabels: true,
             formatter: (value: string) => (value ? cycleMonthLabel(value) : ""),
-            style: { colors: "#707a8e", fontSize: "10px" },
+            style: { colors: COLORS.dim, fontSize: "10px" },
           },
           tooltip: { enabled: false },
         },
@@ -82,7 +83,7 @@ export default function BillHistoryChart({ history, solarStart }: BillHistoryCha
           tickAmount: 3,
           labels: {
             formatter: axisMoney,
-            style: { colors: ["#707a8e"], fontSize: "10px" },
+            style: { colors: [COLORS.dim], fontSize: "10px" },
           },
         },
         annotations: solarCycle && history.some((item) => item.cycle === solarCycle)
@@ -97,7 +98,7 @@ export default function BillHistoryChart({ history, solarStart }: BillHistoryCha
                     orientation: "horizontal",
                     offsetY: -4,
                     borderWidth: 0,
-                    style: { background: "transparent", color: "#ffc76b", fontSize: "10px", fontWeight: 700 },
+                    style: { background: "transparent", color: COLORS.pv, fontSize: "10px", fontWeight: 700 },
                   },
                 },
               ],
