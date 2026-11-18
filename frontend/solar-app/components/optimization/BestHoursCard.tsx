@@ -1,0 +1,106 @@
+"use client";
+
+import { siteClock } from "@/lib/time";
+
+import { useState } from "react";
+import Card from "@/components/Card";
+import {
+  bestWindow,
+  fmtDuration,
+  HourCell,
+  HourLevel,
+  minutesLeftInWindow,
+} from "@/app/optimization/optimization.helpers";
+
+const levelClass: Record<HourLevel, string> = {
+  cheap: "bg-pv shadow-[0_0_8px_rgba(255,199,107,0.4)]",
+  mid: "bg-batt/55",
+  dear: "bg-grid-in/40",
+  none: "bg-white/[0.08]",
+};
+
+const AXIS_HOURS = [0, 6, 12, 18, 24];
+
+function hourLabel(hour: number): string {
+  return `${String(hour).padStart(2, "0")}h`;
+}
+
+export default function BestHoursCard({ cells, now }: { cells: HourCell[]; now: Date }) {
+  const currentHour = siteClock(now).hour;
+  const [selectedHour, setSelectedHour] = useState(currentHour);
+
+  if (!cells.length || cells.every((cell) => cell.level === "none")) return null;
+
+  const best = bestWindow(cells);
+  const minutesLeft = best ? minutesLeftInWindow(best, now) : null;
+  const selected = cells.find((cell) => cell.hour === selectedHour) ?? cells[0];
+
+  return (
+    <Card
+      accent="pv"
+      aria-labelledby="best-hours"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-bold text-zinc-100" id="best-hours">
+          <i className="fa-solid fa-clock mr-1.5 text-pv" />
+          Usual best hours
+        </h2>
+        <span className="text-[11px] text-zinc-500">30-day pattern · Vietnam time</span>
+      </div>
+
+      {best && (
+        <p className="mt-2 text-[13px] text-zinc-300">
+          <strong className="text-pv">
+            {best.from}h–{best.to}h
+          </strong>{" "}
+          for heavy loads
+          {minutesLeft != null && <span className="text-good"> · {fmtDuration(minutesLeft)} left</span>}
+        </p>
+      )}
+
+      <div className="mt-3 flex h-9 gap-[2px]" role="group" aria-label="Hours of the day">
+        {cells.map((cell) => (
+          <button
+            key={cell.hour}
+            type="button"
+            className={`relative flex-1 rounded-[3px] transition-transform ${levelClass[cell.level]} ${
+              cell.hour === selectedHour ? "scale-y-110 ring-2 ring-white/90" : ""
+            }`}
+            aria-label={`${hourLabel(cell.hour)}: ${cell.description}`}
+            aria-pressed={cell.hour === selectedHour}
+            onClick={() => setSelectedHour(cell.hour)}
+          >
+            {cell.hour === currentHour && (
+              <span className="absolute -top-2 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-white" aria-hidden="true" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-zinc-500">
+        {AXIS_HOURS.map((hour) => (
+          <span key={hour}>{hour}h</span>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2 text-[12px]" aria-live="polite">
+        <span className="text-zinc-200">
+          <strong className="tabular-nums">{hourLabel(selected.hour)}</strong>
+          {selected.hour === currentHour && <span className="text-zinc-500"> · now</span>}
+          <span className="text-zinc-400"> · {selected.description}</span>
+        </span>
+        {selected.cost && (
+          <span className={`shrink-0 font-semibold tabular-nums ${{ cheap: "text-good", mid: "text-batt", dear: "text-grid-in", none: "" }[selected.level]}`}>
+            {selected.cost}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-400">
+        <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.cheap}`} />Spare sun</span>
+        <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.mid}`} />Battery</span>
+        <span><i className={`mr-1.5 inline-block size-2.5 rounded-[3px] align-middle ${levelClass.dear}`} />Grid</span>
+      </div>
+    </Card>
+  );
+}

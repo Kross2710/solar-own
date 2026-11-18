@@ -1,0 +1,104 @@
+import Link from "next/link";
+import {
+  dayOfWeek,
+  isFlatForecast,
+  RAIN_SHOWN_FROM_PCT,
+  weatherIcon,
+} from "@/app/optimization/optimization.helpers";
+import { ForecastDay } from "@/lib/types/optimization";
+import Card from "@/components/Card";
+
+const DAYS_SHOWN = 5;
+const BAR_MAX_PX = 44;
+
+interface ForecastCardProps {
+  days: ForecastDay[];
+  avg30: number | null;
+  mae: number | null;
+}
+
+export default function ForecastCard({ days, avg30, mae }: ForecastCardProps) {
+  const shown = days.slice(0, DAYS_SHOWN);
+  if (!shown.length) return null;
+
+  const flat = isFlatForecast(shown);
+  const scale = Math.max(...shown.map((day) => day.kwh ?? 0), avg30 ?? 0, 1);
+  const avgPx = avg30 != null ? (avg30 / scale) * BAR_MAX_PX : null;
+  const roundedMae = mae != null ? Math.round(mae) : null;
+  const note = flat
+    ? `Similar weather ahead · output about the same${roundedMae != null ? ` (typical error ${roundedMae} kWh)` : ""}`
+    : roundedMae != null
+      ? `typical historical error ${roundedMae} kWh`
+      : "forecast of measured output, limited by load and battery room";
+
+  return (
+    <Card
+      accent="pv"
+      aria-labelledby="next-days"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-bold text-zinc-100" id="next-days">Next {shown.length} days</h2>
+        <span className="text-right text-[11px] text-zinc-500">{note}</span>
+      </div>
+
+      <p className="mt-2 text-[11px] text-zinc-500">Measured output depends on sunshine, home load and battery room. <Link href="/optimization/accuracy" className="text-pv underline">Forecast accuracy</Link></p>
+      <div className="relative mt-4 grid grid-cols-5 gap-1.5">
+        {shown.map((day) => {
+          const icon = weatherIcon(day.wcode);
+          const barPx = day.kwh != null ? Math.max(4, (day.kwh / scale) * BAR_MAX_PX) : 0;
+          return (
+            <div
+              key={day.date}
+              className={`flex flex-col items-center rounded-xl px-1 py-2 text-center ${
+                day.today ? "bg-white/[0.06] ring-1 ring-inset ring-white/10" : ""
+              }`}
+            >
+              <p className={`text-[11px] font-semibold ${day.today ? "text-zinc-100" : "text-zinc-400"}`}>
+                {day.today ? "Today" : dayOfWeek(day.date)}
+              </p>
+              <i className={`fa-solid ${icon.icon} ${icon.className} mt-1.5 text-base`} aria-hidden="true" />
+
+              <div className="relative mt-2 flex w-full justify-center" style={{ height: BAR_MAX_PX }}>
+                {avgPx != null && (
+                  <span
+                    className="absolute inset-x-0 border-t border-dashed border-white/20"
+                    style={{ bottom: avgPx }}
+                    aria-hidden="true"
+                  />
+                )}
+                <span
+                  className="mt-auto w-3 rounded-t-[3px] bg-gradient-to-t from-pv/40 to-pv"
+                  style={{ height: barPx }}
+                  aria-hidden="true"
+                />
+              </div>
+
+              <p className="mt-1.5 text-[13px] font-bold tabular-nums text-zinc-100">
+                {day.kwh == null ? "–" : `${flat ? "~" : ""}${Math.round(day.kwh)}`}
+                <span className="ml-0.5 text-[9px] font-medium text-zinc-500">kWh</span>
+              </p>
+              <p className="text-[10px] tabular-nums text-zinc-500">
+                {day.tmax != null ? `${Math.round(day.tmax)}°` : "–"}/{day.tmin != null ? `${Math.round(day.tmin)}°` : "–"}
+              </p>
+              <p className="h-4 text-[10px] tabular-nums text-load">
+                {day.rain_prob != null && day.rain_prob >= RAIN_SHOWN_FROM_PCT && (
+                  <>
+                    <i className="fa-solid fa-umbrella mr-0.5" />
+                    {Math.round(day.rain_prob)}%
+                  </>
+                )}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {avg30 != null && (
+        <p className="mt-2 text-[10px] text-zinc-500">
+          <span className="mr-1.5 inline-block w-4 border-t border-dashed border-white/30 align-middle" />
+          30-day average {Math.round(avg30)} kWh
+        </p>
+      )}
+    </Card>
+  );
+}

@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* App palette: text-pv, bg-card/90, ring-batt/35… Keep in sync with lib/colors.ts (charts and SVG). */
+@theme static {
+  --color-pv: #ffc76b;      /* solar */
+  --color-load: #7dd3fc;    /* home load */
+  --color-batt: #b8a6ff;    /* battery */
+  --color-grid-in: #fb8a95; /* buying from the grid */
+  --color-good: #34d399;    /* savings, export */
+  --color-card: #0a0e18;
+  --color-ink: #04060c;     /* page background, text on bright buttons */
+  --color-fg: #eef1f8;      /* main text */
+  --color-muted: #9aa3b5;
+  --color-dim: #707a8e;
+  --font-sans: var(--font-be-vietnam), "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+[hidden] { display: none !important; }
+
+/* Solid color on html (not only a gradient): status bar and overscroll take the color,
+   otherwise white edges show on iOS. */
+html {
+  background-color: var(--color-ink);
+  min-height: 100%;
+}
+body {
+  color: var(--color-fg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.fa-solid { vertical-align: -0.05em; }
+
+/* Status dot in the top bar */
+@keyframes status-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* Living house scene (components/house). Lengths are svg user units. */
+/* Light pulse along a power cable; the travel matches one dash period in flow.tsx. */
+@keyframes flow-pulse { to { stroke-dashoffset: -60; } }
+@keyframes soft-pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
+@keyframes flash-once { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ring-out { from { transform: scale(0.6); opacity: 0.9; } to { transform: scale(3.2); opacity: 0; } }
+@keyframes sparkle {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  30% { transform: scale(1.2) rotate(45deg); opacity: 1; }
+  100% { transform: scale(0) rotate(90deg); opacity: 0; }
+}
+@keyframes pop-in { from { transform: translateY(4px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Aurora glow behind the content ---------- */
+.aurora {
+  position: fixed; left: -20%; top: -14%; width: 140%; height: 52%;
+  background:
+    radial-gradient(50% 60% at 50% 40%, rgba(90, 120, 180, 0.2), transparent 70%),
+    radial-gradient(40% 50% at 30% 60%, rgba(90, 140, 255, 0.18), transparent 70%);
+  filter: blur(30px);
+  animation: auroraShift 9s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 1s;
+}
+@keyframes auroraShift {
+  0%, 100% { transform: translate(-8%, -4%) scale(1); }
+  50% { transform: translate(8%, 4%) scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) { .aurora { animation: none !important; } }
+
+/* Components size text in fixed px, so the large text modes zoom the whole app. */
+:root[data-fontscale="lg"] .app { zoom: 1.12; }
+:root[data-fontscale="xl"] .app { zoom: 1.26; }
