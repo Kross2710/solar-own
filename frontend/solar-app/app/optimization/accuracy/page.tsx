@@ -10,7 +10,7 @@ import { AccuracyResponse } from "@/lib/types/optimization";
 
 export default function AccuracyPage() {
   const [model, setModel] = useState("");
-  const { data, error, isLoading, mutate } = useSWR<AccuracyResponse>(apiUrl(`/api/forecast/accuracy${model ? `?model=${encodeURIComponent(model)}` : ""}`), fetcher, { refreshInterval: 30_000 });
+  const { data, error, isLoading, isValidating, mutate } = useSWR<AccuracyResponse>(apiUrl(`/api/forecast/accuracy${model ? `?model=${encodeURIComponent(model)}` : ""}`), fetcher, { refreshInterval: 30_000 });
   const ready = data?.ready ? data : null;
   const points = ready?.points ?? [];
   const min = Math.min(0, ...points.map(p => Math.min(p.actual, p.pred, p.baseline_pred)));
@@ -19,7 +19,7 @@ export default function AccuracyPage() {
   const y = (value: number) => 280 - (value - min) * 240 / (max - min);
   const line = (key: "actual" | "pred" | "baseline_pred") => points.map((p, i) => `${x(i)},${y(p[key])}`).join(" ");
 
-  return <DashboardPage status={error ? "error" : isLoading ? "connecting" : "online"}>
+  return <DashboardPage refreshing={isValidating && Boolean(data)} status={error ? "error" : isLoading ? "connecting" : "online"}>
     <Link href="/optimization" className="text-sm text-pv">← Optimization</Link>
     <Card accent="pv">
       <div className="flex flex-wrap items-center justify-between gap-4">

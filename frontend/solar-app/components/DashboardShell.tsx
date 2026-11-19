@@ -24,7 +24,8 @@ const pillClass =
 const DOT_CLASS: Record<string, string> = {
     online: "bg-good text-good/60 animate-[status-blink_2s_infinite]",
     error: "bg-grid-in text-grid-in/55 animate-[status-blink_1.3s_infinite]",
-    connecting: "bg-pv text-pv/50 animate-[status-blink_2.4s_infinite]",
+    updating: "bg-pv text-pv/50 animate-[status-blink_2.8s_infinite]",
+    connecting: "bg-pv text-pv/50 animate-[status-blink_2.8s_infinite]",
 };
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
@@ -58,12 +59,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         title = "Assistant";
     }
 
-    const statusPill = status && (
+    const statusPill = status ? (
         <span className={pillClass}>
             <span className={`inline-block size-1.5 rounded-full shadow-[0_0_6px_currentColor] motion-reduce:animate-none ${DOT_CLASS[status] ?? DOT_CLASS.online}`} />
             {status}
         </span>
-    );
+    ) : null;
     const settingsButton = (
         <button
             className="inline-flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full text-[15px] text-dim transition-colors duration-200 hover:text-fg"

@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import DashboardPage from "../DashboardPage";
+import DashboardPage, { PageUnavailable } from "../DashboardPage";
 import OverviewTimeChart, {
   PowerHistoryPoint,
 } from "../OverviewTimeChart";
@@ -44,7 +44,7 @@ export default function Dashboard() {
   // Desktop has room for the chart, so it is always shown there.
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
 
-  const { data, error, isLoading } = useSWR<MetricsResponse>(
+  const { data, error, isValidating } = useSWR<MetricsResponse>(
     apiUrl("/api/metrics"),
     fetcher,
     {
@@ -68,24 +68,7 @@ export default function Dashboard() {
     refreshInterval: 10 * 60 * 1000,
   });
 
-  if (isLoading && !data) {
-    return (
-      <DashboardPage status="connecting">
-        <OverviewSkeleton />
-      </DashboardPage>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <DashboardPage status="error">
-        <Card accent="warn" pad="p-6" className="text-center" role="alert">
-          <p className="text-sm font-semibold text-grid-in">Can&apos;t get data from the backend</p>
-          <p className="mt-1 text-[12px] text-zinc-400">The rest of the app stays available from the tabs below.</p>
-        </Card>
-      </DashboardPage>
-    );
-  }
+  if (!data) return <PageUnavailable failed={Boolean(error)} />;
 
   // Chuyển đổi chỉ số hiển thị
   const battSoc = data?.battery_soc ?? 0;
@@ -101,7 +84,7 @@ export default function Dashboard() {
   const selfPowered = selfPoweredBaseline(dailyData);
 
   return (
-    <DashboardPage status={data?.status} source={data?.source} updatedAt={data?.timestamp}>
+    <DashboardPage status={error ? "error" : data.status} refreshing={isValidating} source={data?.source} updatedAt={data?.timestamp}>
       {/* Stale bar cảnh báo */}
       <div
         className="flex items-center gap-[9px] rounded-xl border border-grid-in/50 bg-grid-in/14 px-3.5 py-[9px] text-[13px] font-semibold text-grid-in"
@@ -255,14 +238,4 @@ function selfPoweredBaseline(daily: DailyResponse[] | undefined) {
     yesterday: selfPoweredPct(daily[daily.length - 2]),
     avg: Math.round(past.reduce((sum, pct) => sum + pct, 0) / past.length),
   };
-}
-
-function OverviewSkeleton() {
-  return (
-    <div className="flex flex-col gap-7" aria-hidden="true">
-      <Card pad="" className="h-72 animate-pulse" />
-      <Card pad="" className="h-64 animate-pulse" />
-      <Card pad="" className="h-44 animate-pulse" />
-    </div>
-  );
 }

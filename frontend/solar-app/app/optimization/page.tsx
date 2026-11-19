@@ -3,7 +3,7 @@
 import { siteClock } from "@/lib/time";
 
 import { useEffect, useMemo, useState } from "react";
-import DashboardPage from "@/components/DashboardPage";
+import DashboardPage, { PageUnavailable } from "@/components/DashboardPage";
 import BestHoursCard from "@/components/optimization/BestHoursCard";
 import DoNowCard from "@/components/optimization/DoNowCard";
 import ForecastCard from "@/components/optimization/ForecastCard";
@@ -34,8 +34,8 @@ function useNow(): Date {
 
 export default function OptimizationPage() {
   const now = useNow();
-  const { data: forecast, isLoading: forecastLoading } = useForecast();
-  const { data: metrics, error: metricsError, isLoading: metricsLoading } = useMetrics();
+  const { data: forecast, error: forecastError, isValidating: forecastRefreshing } = useForecast();
+  const { data: metrics, error: metricsError, isValidating: metricsRefreshing } = useMetrics();
   const { data: hourly } = useHourly();
   const { data: curtailment } = useCurtailment();
   const { money } = useMoney();
@@ -51,24 +51,10 @@ export default function OptimizationPage() {
   const suggestions = buildSuggestions({ metrics, kind, tier: money?.projected_tier ?? money?.tier, hour: siteClock(now).hour });
   const cells = useMemo(() => (hourly ? hourCells(hourly.hours, hourly.marginal) : []), [hourly]);
 
-  if (metricsLoading && forecastLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-zinc-400">
-        Connecting to Solar...
-      </div>
-    );
-  }
-
-  if (metricsError && !forecast) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
-        Can&apos;t get data from Backend
-      </div>
-    );
-  }
+  if (!metrics && !forecast) return <PageUnavailable failed={Boolean(metricsError || forecastError)} />;
 
   return (
-    <DashboardPage status={metricsError ? "error" : "online"} source="">
+    <DashboardPage status={metricsError || forecastError ? "error" : "online"} refreshing={metricsRefreshing || forecastRefreshing} updatedAt={metrics?.timestamp}>
       <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
         <TonightHero
           kind={kind}

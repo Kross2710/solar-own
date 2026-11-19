@@ -1,6 +1,6 @@
 "use client";
 
-import DashboardPage from "@/components/DashboardPage";
+import DashboardPage, { PageUnavailable } from "@/components/DashboardPage";
 import EvnBillCard from "@/components/money/EvnBillCard";
 import SavingsCards from "@/components/money/SavingsCards";
 import SavingsHero from "@/components/money/SavingsHero";
@@ -8,26 +8,12 @@ import TierLadderCard from "@/components/money/TierLadderCard";
 import { useMoney } from "@/hooks/useMoney";
 
 export default function MoneyPage() {
-  const { money, error, isLoading } = useMoney();
+  const { money, error, isValidating } = useMoney();
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-zinc-400">
-        Connecting to Solar...
-      </div>
-    );
-  }
-
-  if (error || !money) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
-        Can&apos;t get data from Backend
-      </div>
-    );
-  }
+  if (!money) return <PageUnavailable failed={Boolean(error)} />;
 
   return (
-    <DashboardPage status="online" source="">
+    <DashboardPage status={error ? "error" : "online"} refreshing={isValidating}>
       <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
         <SavingsHero cycle={money.cycle} />
         <SavingsCards

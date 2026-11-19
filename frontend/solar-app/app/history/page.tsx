@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Card from "@/components/Card";
-import DashboardPage from "@/components/DashboardPage";
+import DashboardPage, { PageUnavailable } from "@/components/DashboardPage";
 import HistoryChart, { Range } from "../../components/HistoryChart";
 import HistoryStatGrid from "../../components/HistoryStatGrid";
 import SelfPoweredCard from "../../components/SelfPoweredCard";
@@ -20,7 +20,7 @@ export default function HistoryPage() {
   const {
     data: dailyData,
     error: dailyError,
-    isLoading: dailyLoading,
+    isValidating: dailyRefreshing,
   } = useSWR<DailyResponse[]>(apiUrl("/api/daily?days=31"), fetcher, {
     refreshInterval: 100000,
   });
@@ -28,7 +28,7 @@ export default function HistoryPage() {
   const {
     data: summaryData,
     error: summaryError,
-    isLoading: summaryLoading,
+    isValidating: summaryRefreshing,
   } = useSWR<SummaryResponse>(apiUrl("/api/summary"), fetcher, {
     refreshInterval: 50000,
   });
@@ -59,20 +59,8 @@ export default function HistoryPage() {
   // Lấy thông tin năm hiện tại
   const currentYear = summaryData?.yearly?.[summaryData.yearly.length - 1];
 
-  if (dailyLoading || summaryLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-zinc-400">
-        Connecting to Solar...
-      </div>
-    );
-  }
-
-  if (dailyError || summaryError) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
-        Can&apos;t get data from Backend
-      </div>
-    );
+  if (!dailyData || !summaryData) {
+    return <PageUnavailable failed={Boolean((!dailyData && dailyError) || (!summaryData && summaryError))} />;
   }
 
   const todaykWh = dailyData?.slice(-1)[0]?.kwh ?? 0;
@@ -118,7 +106,7 @@ export default function HistoryPage() {
   ];
 
   return (
-    <DashboardPage status="live" source="">
+    <DashboardPage status={dailyError || summaryError ? "error" : "live"} refreshing={dailyRefreshing || summaryRefreshing}>
       <section className="text-center" aria-labelledby="month-generation">
         <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="month-generation">
           This Month
