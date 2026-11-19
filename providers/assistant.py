@@ -24,6 +24,26 @@ import httpx
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
+_DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+_GEMINI_TIMEOUT = httpx.Timeout(20, connect=5)
+_GEMINI_RETRY_STATUS = {500, 502, 503, 504}
+_GEMINI_FALLBACK_STATUS = _GEMINI_RETRY_STATUS | {404, 429}
+
+
+def _gemini_generation_config(model: str, max_tokens: int, temperature: float) -> dict:
+    config = {"temperature": temperature, "maxOutputTokens": max_tokens}
+    if model in {"gemini-3.5-flash-lite", "gemini-3.1-flash-lite"}:
+        config["thinkingConfig"] = {"thinkingLevel": "MINIMAL", "includeThoughts": False}
+    return config
+
+
+def _can_fail_over(error: Exception) -> bool:
+    return isinstance(error, httpx.TransportError) or (
+        isinstance(error, httpx.HTTPStatusError)
+        and error.response.status_code in _GEMINI_FALLBACK_STATUS
+    )
+
+
 # <think>...</think> của họ Qwen3/suy luận — lỡ lọt thì cắt bỏ (ta đã gửi think:false).
 _THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
@@ -80,7 +100,7 @@ class Assistant:
     def __init__(self, cfg: Optional[dict]):
         cfg = cfg or {}
         self.provider = (cfg.get("provider") or "gemini").lower()
-        self.model = cfg.get("model") or "gemini-flash-lite-latest"
+        self.model = cfg.get("model") or _DEFAULT_GEMINI_MODEL
         # Model dự phòng khi model chính trả 429/5xx dai dẳng (gemini-3.5-flash free tier
         # hay 503 giờ cao điểm). Trống -> không fallback.
         self.fallback_model = cfg.get("fallback_model") or ""
@@ -121,22 +141,21 @@ class Assistant:
         body = {
             "systemInstruction": {"parts": [{"text": system_text}]},
             "contents": contents,
-            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+            "generationConfig": _gemini_generation_config(model, max_tokens, temperature),
         }
         if tools:
             body["tools"] = [{"functionDeclarations": [t["decl"] for t in tools.values()]}]
-        async with httpx.AsyncClient(timeout=90) as client:
+        async with httpx.AsyncClient(timeout=_GEMINI_TIMEOUT) as client:
             for round_i in range(self._MAX_TOOL_ROUNDS + 1):
                 if round_i == self._MAX_TOOL_ROUNDS:
                     body.pop("tools", None)  # vòng chót: ép trả lời text, không cho gọi thêm
                 # Key gửi qua HEADER (không phải query param) -> KHÔNG dính vào URL trong thông báo lỗi
                 # của httpx, tránh lộ key ra client/log khi Gemini trả 4xx/5xx.
-                # Retry nhẹ cho lỗi TẠM (429 rate-limit / 5xx quá tải — gemini-3.5-flash hay dính
-                # 503 giờ cao điểm): thử lại tối đa 2 lần, backoff ngắn; lỗi khác raise luôn.
-                for attempt in range(3):
+                # Retry a transient server error once. Let quota errors reach fallback immediately.
+                for attempt in range(2):
                     r = await client.post(url, headers={"x-goog-api-key": api_key}, json=body)
-                    if r.status_code in (429, 500, 502, 503) and attempt < 2:
-                        await asyncio.sleep(1.5 * (attempt + 1))
+                    if r.status_code in _GEMINI_RETRY_STATUS and attempt == 0:
+                        await asyncio.sleep(0.5)
                         continue
                     break
                 r.raise_for_status()
@@ -148,7 +167,7 @@ class Assistant:
                 parts = ((cands[0].get("content") or {}).get("parts")) or []
                 calls = [p["functionCall"] for p in parts if isinstance(p, dict) and p.get("functionCall")]
                 if not calls or not tools:
-                    text = "".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
+                    text = "".join(p.get("text", "") for p in parts if isinstance(p, dict) and not p.get("thought")).strip()
                     return text or _FALLBACK[lang]["empty"]
                 # Model muốn tra dữ liệu: chạy từng hàm, nối lượt model + functionResponse rồi hỏi tiếp.
                 contents.append({"role": "model", "parts": parts})
@@ -191,22 +210,22 @@ class Assistant:
         body = {
             "systemInstruction": {"parts": [{"text": system_text}]},
             "contents": contents,
-            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+            "generationConfig": _gemini_generation_config(model, max_tokens, temperature),
         }
         if tools:
             body["tools"] = [{"functionDeclarations": [t["decl"] for t in tools.values()]}]
         emitted_any = False
-        async with httpx.AsyncClient(timeout=90) as client:
+        async with httpx.AsyncClient(timeout=_GEMINI_TIMEOUT) as client:
             for round_i in range(self._MAX_TOOL_ROUNDS + 1):
                 if round_i == self._MAX_TOOL_ROUNDS:
                     body.pop("tools", None)  # vòng chót: ép trả lời text
-                # Retry MỞ stream cho lỗi tạm (429/5xx) — chỉ trước khi có dữ liệu.
-                for attempt in range(3):
+                # Retry opening the stream once on a transient server error.
+                for attempt in range(2):
                     async with client.stream("POST", url, headers={"x-goog-api-key": api_key},
                                              json=body) as r:
-                        if r.status_code in (429, 500, 502, 503) and attempt < 2:
+                        if r.status_code in _GEMINI_RETRY_STATUS and attempt == 0:
                             await r.aread()
-                            await asyncio.sleep(1.5 * (attempt + 1))
+                            await asyncio.sleep(0.5)
                             continue
                         if r.status_code >= 400:
                             await r.aread()  # nạp body để raise có nội dung, không treo stream
@@ -232,8 +251,9 @@ class Assistant:
                                     round_parts.append(p)
                                 elif p.get("text"):
                                     round_parts.append(p)
-                                    emitted_any = True
-                                    yield {"type": "delta", "text": p["text"]}
+                                    if not p.get("thought"):
+                                        emitted_any = True
+                                        yield {"type": "delta", "text": p["text"]}
                     break  # stream đọc xong (hoặc raise) -> thoát vòng retry
                 if not calls or not tools:
                     if not emitted_any:
@@ -292,11 +312,11 @@ class Assistant:
         try:
             return await self._call(self.provider, self.model, self.api_key, system_text,
                                     msgs, self.max_tokens, 0.4, lang, tools=tools)
-        except httpx.HTTPStatusError as e:
+        except (httpx.HTTPStatusError, httpx.TransportError) as e:
             # Model chính quá tải/hết quota (đã retry trong _gemini) -> thử model dự phòng
             # 1 lần cho trọn cuộc chat; lỗi khác (4xx cấu hình) thì để nổ như cũ.
             fb = self.fallback_model
-            if fb and fb != self.model and e.response.status_code in (429, 500, 502, 503):
+            if self.provider == "gemini" and fb and fb != self.model and _can_fail_over(e):
                 return await self._call(self.provider, fb, self.api_key, system_text,
                                         msgs, self.max_tokens, 0.4, lang, tools=tools)
             raise
@@ -345,10 +365,10 @@ class Assistant:
                                                 msgs, self.max_tokens, 0.4, lang, tools=tools):
                 emitted = emitted or ev.get("type") == "delta"
                 yield ev
-        except httpx.HTTPStatusError as e:
+        except (httpx.HTTPStatusError, httpx.TransportError) as e:
             fb = self.fallback_model
             if emitted or not fb or fb == self.model \
-                    or e.response.status_code not in (429, 500, 502, 503):
+                    or not _can_fail_over(e):
                 raise
             async for ev in self._gemini_stream(fb, self.api_key, system_text,
                                                 msgs, self.max_tokens, 0.4, lang, tools=tools):

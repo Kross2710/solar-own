@@ -2,13 +2,13 @@
 
 A home energy dashboard for a hybrid solar system. It shows live power flow, how much of the house load came from solar versus the grid, the EVN bill, and when to shift loads so less sun is wasted.
 
-The UI is a Next.js app in `frontend/solar-app`. A FastAPI service polls the inverter, stores history in SQLite, and serves `/api/*`. In development, Next.js proxies those routes to the API, so a phone on the same LAN can open the site without calling `localhost` on itself.
+The active Next.js app is in `frontend/solar-next`. The deployment entry point `frontend/solar-app` links to it. The previous frontend source is preserved in `frontend/solar-app-legacy`. A FastAPI service polls the inverter, stores history in SQLite, and serves `/api/*`. In development, Next.js proxies those routes to the API, so a phone on the same LAN can open the site without calling `localhost` on itself.
 
-On startup the API fills missing SEMS history, patches recent sample gaps, rebuilds curtailment, and (when configured) pulls the EVN portal. The same pass runs again every 12 hours. Settings can start a sync by hand.
+On startup the API fills missing SEMS history, patches recent sample gaps, rebuilds curtailment, and (when configured) pulls the EVN portal. The same pass runs again every 12 hours. The API also accepts manual sync requests.
 
 ## Stack
 
-- Next.js 16, React 19, TypeScript, SWR, and Tailwind CSS 4 for the dashboard
+- Next.js 16, React 19, JavaScript and CSS for the dashboard
 - FastAPI and uvicorn for the API
 - SQLite (`history.db`) for minute samples, daily totals, EVN bills, notices, and weather
 - GoodWe SEMS+ for cloud live data and history
@@ -27,16 +27,14 @@ On startup the API fills missing SEMS history, patches recent sample gaps, rebui
 | `/history` | Daily generation, month and year totals, self-powered days |
 | `/money` | Cycle savings, projected EVN bill, the last real bill, and the current tariff tier |
 | `/optimization` | Tonight's battery plan, best hours to run loads, wasted sun, and the next days' yield |
-| `/optimization/accuracy` | Walk-forward actual/predicted chart, model selector and earlier-days baseline |
+| `/settings` | English or Vietnamese interface and advanced readings |
 | `/assistant` | Rule-based notices and a streaming chat that can look up history before answering |
 
-The gear in the header opens Settings: text size, manual sync, CSV export of daily history, and system status. Text size is stored in the browser.
-
-A warning notice puts a dot on the Assistant tab. Notices cover an inverter offline for 30 minutes, a night load well above the recent average, a projected bill well above the last real bill, an expensive tier coming this cycle, and a week of wasted sun that jumped versus the week before. They expire on their own and can be dismissed.
+Settings stores language and advanced readings in browser cookies. The Assistant keeps conversations on the current browser and can display and dismiss system notices.
 
 ## Run it
 
-Use Python 3.12+ and Node 20+.
+Use Python 3.12+ and Node 22+.
 
 ```bash
 python3 -m venv .venv
@@ -44,7 +42,7 @@ source .venv/bin/activate
 pip install fastapi uvicorn httpx goodwe
 
 cd frontend/solar-app
-npm install
+npm ci
 ```
 
 The yield forecast also needs `numpy`. Install `scikit-learn` as well if you want the gradient-boosting candidate in the model bake-off. Without `numpy`, the rest of the dashboard still runs and the forecast stays off.
@@ -82,9 +80,9 @@ cd frontend/solar-app
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The API listens on [http://127.0.0.1:8787](http://127.0.0.1:8787). Next.js rewrites `/api/*` to that process, with a 120 second proxy timeout so a long assistant reply is not cut off. Override the target with `BACKEND_URL` if the API is not on port 8787.
+Open [http://localhost:3001](http://localhost:3001). The API listens on [http://127.0.0.1:8787](http://127.0.0.1:8787). Next.js rewrites `/api/*` to that process, with a 120 second proxy timeout so a long assistant reply is not cut off. Override the target with `BACKEND_URL` if the API is not on port 8787.
 
-To open the dev server from another device, run Next.js so it listens on the LAN and add that device's origin to `allowedDevOrigins` in `frontend/solar-app/next.config.ts`.
+To open the dev server from another device, run `npx next dev --hostname 0.0.0.0 --port 3001` and configure the device's origin in `frontend/solar-next/next.config.mjs` if needed.
 
 `debugs/backfill_loop.py` and `debugs/backfill_evn.py` run one sync pass by hand. The server already does this on startup, so they are only for a one-off check.
 
@@ -140,15 +138,13 @@ Existing configurations whose tiers match the old EVN schedule automatically rec
 
 Optimization prices use projected billing-cycle purchases rather than trailing-30-day purchases. A hypothetical displaced grid quantity is valued with a difference between tiered bills, capped at projected purchases. Curtailment is shown primarily in kWh; its tariff equivalent is not cash lost or a promise of recoverable savings. Residential grid prices are not time-of-day prices. All site clocks, battery finish times and best-hour markers use Vietnam time regardless of browser timezone.
 
-`/optimization/accuracy` shows model-selection backtests, not independent holdout scores. Archived weather differs from the forecasts available at issue time. Chart and error metrics use the same raw predictions; serving still clips forecasts as before. Read the [37-day data-quality experiment and gate decision](docs/forecast-diagnostic-2026-11-08.md) before pursuing a potential/usable production model. Production training/selection is unchanged.
+The legacy accuracy view shows model-selection backtests. Its former URL now opens Optimization, where advanced readings include forecast diagnostics. Archived weather differs from the forecasts available at issue time. Chart and error metrics use the same raw predictions; serving still clips forecasts as before. Read the [37-day data-quality experiment and gate decision](docs/forecast-diagnostic-2026-11-08.md) before pursuing a potential/usable production model. Production training/selection is unchanged.
 
 Verification:
 
 ```bash
 .venv/bin/python -m unittest discover -s tests
-TZ=America/Los_Angeles node --test frontend/solar-app/tests/site-time.test.mjs
+TZ=America/Los_Angeles node --test frontend/solar-app-legacy/tests/site-time.test.mjs
 cd frontend/solar-app
-npx tsc --noEmit
-npm run lint
 npm run build
 ```
