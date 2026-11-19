@@ -7,6 +7,7 @@ import UpdatedAgo from "@/components/overview/UpdatedAgo";
 import SettingsSheet from "@/components/settings/SettingsSheet";
 import { useNotices } from "@/hooks/useAssistant";
 
+import { useSectionTransition } from "@/hooks/useSectionTransition";
 import { PageStatusContext, type PageStatus } from "./DashboardPage";
 
 const NAV_ITEMS = [
@@ -28,6 +29,7 @@ const DOT_CLASS: Record<string, string> = {
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
     const pathname = usePathname();
+    const { mainRef, navigate } = useSectionTransition(pathname, NAV_ITEMS);
     const [pageStatus, setPageStatus] = useState<PageStatus>();
     const activeStatus = pageStatus?.pathname === pathname ? pageStatus : undefined;
     const { status, source, updatedAt } = activeStatus ?? {};
@@ -90,6 +92,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                             <Link
                                 key={href}
                                 href={href}
+                                onNavigate={event => navigate(event, href)}
                                 aria-current={active ? "page" : undefined}
                                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-200 ${active ? "bg-white/10 font-bold text-fg" : "font-semibold text-dim hover:bg-white/[0.04] hover:text-fg"}`}
                             >
@@ -144,6 +147,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                             <Link
                                 key={href}
                                 href={href}
+                                onNavigate={event => navigate(event, href)}
                                 aria-current={active ? "page" : undefined}
                                 className={`flex flex-1 flex-col items-center gap-1 px-1 py-1.5 text-[10.5px] whitespace-nowrap transition-colors duration-200 hover:text-fg ${active ? "font-bold text-fg" : "font-semibold text-dim"}`}
                             >
@@ -159,7 +163,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                     })}
                 </nav>
 
-                <main className="flex flex-col gap-7"><PageStatusContext.Provider value={setPageStatus}>{children}</PageStatusContext.Provider></main>
+                <main ref={mainRef} className="dashboard-content flex flex-col gap-7"><PageStatusContext.Provider value={setPageStatus}>{children}</PageStatusContext.Provider></main>
             </div>
 
             <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
