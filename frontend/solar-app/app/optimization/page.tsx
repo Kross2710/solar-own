@@ -51,7 +51,7 @@ export default function OptimizationPage() {
   const suggestions = buildSuggestions({ metrics, kind, tier: money?.projected_tier ?? money?.tier, hour: siteClock(now).hour });
   const cells = useMemo(() => (hourly ? hourCells(hourly.hours, hourly.marginal) : []), [hourly]);
 
-  if (!metrics && !forecast) return <PageUnavailable failed={Boolean(metricsError || forecastError)} />;
+  if (!metrics && !forecast) return <PageUnavailable failed={Boolean(metricsError && forecastError)} />;
 
   return (
     <DashboardPage status={metricsError || forecastError ? "error" : "online"} refreshing={metricsRefreshing || forecastRefreshing} updatedAt={metrics?.timestamp}>
