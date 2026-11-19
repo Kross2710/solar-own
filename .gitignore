@@ -7,6 +7,10 @@ config.json
 *.sqlite
 *.sqlite3
 
+# SQLite WAL side files (tạo khi journal_mode=WAL) — không commit
+*.db-wal
+*.db-shm
+
 # Python
 .venv/
 venv/

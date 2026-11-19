@@ -66,14 +66,29 @@ async def snapshot(runtime: AppRuntime) -> dict[str, Any]:
     return metrics
 
 
+# Throttle live-poll error logging so a persistently offline inverter (local
+# polls every 10s) can't spam the log; recovery is still surfaced at once.
+POLL_ERROR_LOG_EVERY = 300
+
+
 async def poll_loop(runtime: AppRuntime) -> None:
+    last_error: datetime | None = None
+    online = True
     while True:
         try:
             await snapshot(runtime)
         except asyncio.CancelledError:
             raise
-        except Exception:
-            pass
+        except Exception as error:
+            now = datetime.now(VN_TZ)
+            if last_error is None or (now - last_error).total_seconds() >= POLL_ERROR_LOG_EVERY:
+                last_error = now
+                print(f"  [poll] error: {type(error).__name__}: {error}", flush=True)
+            online = False
+        else:
+            if not online:
+                print("  [poll] recovered: live provider back online", flush=True)
+                online = True
         await asyncio.sleep(runtime.poll_interval)
 
 

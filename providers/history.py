@@ -18,6 +18,13 @@ class HistoryStore:
     def __init__(self, path: str | Path):
         self.path = str(path)
         con = sqlite3.connect(self.path)
+        # WAL: người đọc (frontend polling samples) không chặn người ghi
+        # (poll_loop ghi mỗi 10s) -> web API vẫn nhanh dưới tải. journal_mode là
+        # trạng thái Vĩnh VIÊN của file DB, nên mọi connection mở sau trong lớp
+        # này tự động theo WAL. busy_timeout chặn "database is locked" khi có
+        # đụng độ ghi/đọc.
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA busy_timeout=5000")
         con.execute(
             """CREATE TABLE IF NOT EXISTS samples(
                  minute TEXT PRIMARY KEY,
