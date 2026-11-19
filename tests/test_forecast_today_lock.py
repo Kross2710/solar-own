@@ -45,3 +45,10 @@ class TestTodayLock:
         # No weather for the day -> None, and nothing cached (retry next time).
         assert self.fc.today_yield_locked("2099-03-04", {}) is None
         assert self.fc.today_lock is None
+
+    def test_locked_value_is_rounded_to_one_decimal(self):
+        # Must match predict_days rounding so today's API value isn't more precise.
+        day = "2099-03-04"
+        val = self.fc.today_yield_locked(day, {day: {"rad": 20.0}})
+        assert val is not None
+        assert val == round(val, 1)

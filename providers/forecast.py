@@ -696,6 +696,7 @@ class SolarForecaster:
             return self.today_kwh
         val = self.predict_one(day, w)
         if val is not None:
+            val = round(val, 1)          # nhất quán với predict_days (làm tròn 1 chữ số)
             self.today_lock = day
             self.today_kwh = val
         return val
