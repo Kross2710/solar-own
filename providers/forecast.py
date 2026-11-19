@@ -490,6 +490,11 @@ class SolarForecaster:
         self.cap = None        # trần kẹp dự báo (best quan sát × 1.1)
         self.n_train = 0
         self.updated_at = None
+        # Số dự báo hôm nay đã khóa cả ngày: tính một lần theo lịch sử ngày, giữ
+        # nguyên cho phần còn lại của ngày để lần refresh 2 lần/ngày không làm số
+        # hôm nay dao động (số người dùng đang dựa vào để quyết định trong ngày).
+        self.today_lock = None    # ngày ISO đã khóa số hôm nay
+        self.today_kwh = None     # số dự báo hôm nay đã khóa
         # Chuỗi chấm điểm walk-forward của mô hình ĐƯỢC CHỌN (cho overlay "Độ chính xác").
         # [{day, actual, pred}] — pred là dự báo train-trên-quá-khứ (không leakage), cùng
         # dữ liệu dùng tính điểm CV. Rỗng cho tới khi fit() chạy xong.
@@ -674,6 +679,26 @@ class SolarForecaster:
         val = max(0.0, val)
         if self.cap:
             val = min(val, self.cap)
+        return val
+
+    def today_yield_locked(self, day: str, weather: dict) -> Optional[float]:
+        """Sản lượng hôm nay đã khóa cả ngày.
+
+        Tính một lần theo lịch sử ngày, giữ nguyên cho phần còn lại của ngày. Lần
+        refresh thời tiết/model hai lần/ngày (forecast_loop) không làm số hôm nay
+        dao động, vì đây là số người dùng đang dựa vào để quyết định trong ngày.
+        Ngày mai trở đi vẫn động, cập nhật theo thời tiết.
+        """
+        w = weather.get(day)
+        if not w:
+            return None
+        if self.today_lock == day and self.today_kwh is not None:
+            return self.today_kwh
+        val = self.predict_one(day, w)
+        if val is not None:
+            val = round(val, 1)          # nhất quán với predict_days (làm tròn 1 chữ số)
+            self.today_lock = day
+            self.today_kwh = val
         return val
 
     def predict_days(self, weather_by_day: dict, days: list) -> list:
