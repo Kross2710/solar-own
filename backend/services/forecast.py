@@ -124,6 +124,18 @@ async def build_forecast(runtime: AppRuntime) -> dict[str, Any]:
     for prediction in predictions:
         prediction["today"] = prediction["date"] == today
 
+    # Khóa số dự báo hôm nay cả ngày: lần refresh hai lần/ngày (thời tiết + model)
+    # không làm số hôm nay dao động; ngày mai trở đi vẫn động theo thời tiết.
+    locked = forecaster.today_yield_locked(today, weather)
+    if locked is not None:
+        rmse = forecaster.quality.get("rmse")
+        for prediction in predictions:
+            if prediction["date"] == today:
+                prediction["kwh"] = locked
+                if rmse:
+                    prediction["lo"] = round(max(0.0, locked - rmse), 1)
+                    prediction["hi"] = round(locked + rmse, 1)
+
     last_30 = [row["kwh"] for row in store.daily(40) if row.get("kwh") is not None][-30:]
     return {
         "ready": True,
