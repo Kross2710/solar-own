@@ -1,22 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useLayoutEffect, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
-
-export interface PageStatus {
-    pathname: string;
-    status: string;
-    source?: string;
-    updatedAt?: string;
-}
-
-export const PageStatusContext = createContext<(value: PageStatus) => void>(() => {});
+import { useEffect, useState, type ReactNode } from "react";
 
 export default function DashboardPage({
-    children, status = "online", source, updatedAt, refreshing = false,
-}: Partial<Omit<PageStatus, "pathname">> & { children: ReactNode; refreshing?: boolean }) {
-    const pathname = usePathname();
-    const publish = useContext(PageStatusContext);
+    children, status = "online", refreshing = false,
+}: { children: ReactNode; status?: "online" | "connecting" | "error"; refreshing?: boolean }) {
     const pending = status === "connecting" || refreshing;
     const [slow, setSlow] = useState(false);
     useEffect(() => {
@@ -27,23 +15,22 @@ export default function DashboardPage({
             setSlow(false);
         };
     }, [pending]);
-    let visibleStatus = status;
-    if (status === "connecting" && !slow) visibleStatus = "";
-    if (refreshing && slow && (status === "online" || status === "live")) visibleStatus = "updating";
-    useLayoutEffect(() => {
-        publish({ pathname, status: visibleStatus, source, updatedAt });
-    }, [publish, pathname, visibleStatus, source, updatedAt]);
-    return children;
+    let notice = "";
+    if (status === "error") notice = "Couldn’t refresh all data on this page.";
+    else if (pending && slow) notice = status === "connecting" ? "Connecting…" : "Updating…";
+    return <>
+        {children}
+        {notice && <p role="status" className="text-xs text-muted">{notice}</p>}
+    </>;
 }
 
 export function PageUnavailable({ failed = false }: { failed?: boolean }) {
+    if (failed) return <p role="alert" className="text-sm text-grid-in">Couldn’t load data from the backend.</p>;
     return (
-        <DashboardPage status={failed ? "error" : "connecting"}>
+        <DashboardPage status="connecting">
             <div className="rounded-[22px] border border-white/10 bg-card/90 p-6 text-muted"
-                role={failed ? "alert" : "status"}>
-                {failed ? "Couldn’t load data from the backend." : (
-                    <><span aria-hidden="true">—</span><span className="sr-only">Loading dashboard data</span></>
-                )}
+                role="status">
+                <span aria-hidden="true">—</span><span className="sr-only">Loading dashboard data</span>
             </div>
         </DashboardPage>
     );

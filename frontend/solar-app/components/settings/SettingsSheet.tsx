@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef, useState } from "react";
+import UpdatedAgo from "@/components/overview/UpdatedAgo";
 import { useSWRConfig } from "swr";
 import { FontScale, useFontScale, useStatus } from "@/hooks/useSettings";
 import { apiUrl } from "@/lib/api";
@@ -178,7 +179,7 @@ function SystemList({ active }: { active: boolean }) {
   );
 }
 
-export default function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function SettingsSheet({ open, onClose, updatedAt }: { open: boolean; onClose: () => void; updatedAt?: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [scale, setScale] = useFontScale();
   const { data: status } = useStatus(open);
@@ -243,6 +244,10 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
         </Section>
 
         <Section title="System">
+          <div className="mb-2 flex justify-between gap-4 text-[12px]">
+            <span className="text-zinc-500">Latest inverter reading</span>
+            {open && updatedAt ? <UpdatedAgo iso={updatedAt} /> : <span>—</span>}
+          </div>
           <SystemList active={open} />
         </Section>
       </div>

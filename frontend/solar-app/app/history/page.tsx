@@ -106,7 +106,7 @@ export default function HistoryPage() {
   ];
 
   return (
-    <DashboardPage status={dailyError || summaryError ? "error" : "live"} refreshing={dailyRefreshing || summaryRefreshing}>
+    <DashboardPage status={dailyError || summaryError ? "error" : "online"} refreshing={dailyRefreshing || summaryRefreshing}>
       <section className="text-center" aria-labelledby="month-generation">
         <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="month-generation">
           This Month

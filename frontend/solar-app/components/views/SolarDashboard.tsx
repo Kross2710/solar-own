@@ -84,7 +84,7 @@ export default function Dashboard() {
   const selfPowered = selfPoweredBaseline(dailyData);
 
   return (
-    <DashboardPage status={error ? "error" : data.status} refreshing={isValidating} source={data?.source} updatedAt={data?.timestamp}>
+    <DashboardPage status={error ? "error" : "online"} refreshing={isValidating}>
       {/* Stale bar cảnh báo */}
       <div
         className="flex items-center gap-[9px] rounded-xl border border-grid-in/50 bg-grid-in/14 px-3.5 py-[9px] text-[13px] font-semibold text-grid-in"
