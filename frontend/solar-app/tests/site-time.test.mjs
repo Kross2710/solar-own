@@ -17,7 +17,7 @@ function load(file) {
   return compiled.exports;
 }
 const { siteClock } = load(path.join(root, 'lib/time.ts'));
-const { minutesLeftInWindow, batteryOutlook, buildSuggestions } = load(path.join(root, 'app/optimization/optimization.helpers.ts'));
+const { minutesLeftInWindow, batteryPlan, batteryOutlook, buildSuggestions } = load(path.join(root, 'app/optimization/optimization.helpers.ts'));
 
 test('Vietnam day/hour and countdown ignore process timezone', () => {
   const instant = new Date('2026-11-06T16:52:00Z');
@@ -34,4 +34,16 @@ test('late night has no fixed 21-23h warning and spare sun needs battery room ch
   const metrics = { pv_power_w: 5000, load_power_w: 1000, battery_soc: 40, battery_capacity_kwh: 20 };
   assert.equal(buildSuggestions({ metrics, kind: 'sunny', hour: 12 }).some(s => s.id === 'wash-now'), false);
   assert.equal(buildSuggestions({ metrics: { ...metrics, battery_soc: 100 }, kind: 'sunny', hour: 12 }).some(s => s.id === 'wash-now'), true);
+});
+
+test('overnight and runtime estimates stop at the inverter discharge floor', () => {
+  const battery = { battery_soc: 50, battery_capacity_kwh: 20, battery_power_w: -1000 };
+  assert.equal(batteryPlan(battery, 7).usableKwh, 6);
+  assert.equal(batteryPlan(battery, 7).enough, false);
+  assert.equal(batteryPlan(battery, 6).enough, true);
+  const now = new Date('2026-11-06T16:52:00Z');
+  assert.match(batteryOutlook(battery, now).detail, /reaches 20% around 05:50/);
+  for (const soc of [19, 20]) {
+    assert.equal(batteryPlan({ ...battery, battery_soc: soc }, 1).usableKwh, 0);
+  }
 });

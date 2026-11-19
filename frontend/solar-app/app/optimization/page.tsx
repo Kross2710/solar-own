@@ -59,7 +59,7 @@ export default function OptimizationPage() {
         <TonightHero
           kind={kind}
           tomorrowKwh={tomorrow?.kwh ?? null}
-          advice={planAdvice(kind)}
+          advice={planAdvice(kind, plan?.enough ?? null)}
           plan={plan}
         />
         <div className="flex flex-col gap-7">
