@@ -3,7 +3,7 @@
 import { siteClock } from "@/lib/time";
 
 import { useEffect, useMemo, useState } from "react";
-import DashboardShell from "@/components/DashboardShell";
+import DashboardPage from "@/components/DashboardPage";
 import BestHoursCard from "@/components/optimization/BestHoursCard";
 import DoNowCard from "@/components/optimization/DoNowCard";
 import ForecastCard from "@/components/optimization/ForecastCard";
@@ -68,7 +68,7 @@ export default function OptimizationPage() {
   }
 
   return (
-    <DashboardShell status={metricsError ? "error" : "online"} source="">
+    <DashboardPage status={metricsError ? "error" : "online"} source="">
       <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
         <TonightHero
           kind={kind}
@@ -89,6 +89,6 @@ export default function OptimizationPage() {
           </div>
         )}
       </div>
-    </DashboardShell>
+    </DashboardPage>
   );
 }

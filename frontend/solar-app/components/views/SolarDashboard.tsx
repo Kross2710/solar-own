@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import DashboardShell from "../DashboardShell";
+import DashboardPage from "../DashboardPage";
 import OverviewTimeChart, {
   PowerHistoryPoint,
 } from "../OverviewTimeChart";
@@ -70,20 +70,20 @@ export default function Dashboard() {
 
   if (isLoading && !data) {
     return (
-      <DashboardShell status="connecting">
+      <DashboardPage status="connecting">
         <OverviewSkeleton />
-      </DashboardShell>
+      </DashboardPage>
     );
   }
 
   if (error || !data) {
     return (
-      <DashboardShell status="error">
+      <DashboardPage status="error">
         <Card accent="warn" pad="p-6" className="text-center" role="alert">
           <p className="text-sm font-semibold text-grid-in">Can&apos;t get data from the backend</p>
           <p className="mt-1 text-[12px] text-zinc-400">The rest of the app stays available from the tabs below.</p>
         </Card>
-      </DashboardShell>
+      </DashboardPage>
     );
   }
 
@@ -101,7 +101,7 @@ export default function Dashboard() {
   const selfPowered = selfPoweredBaseline(dailyData);
 
   return (
-    <DashboardShell status={data?.status} source={data?.source} updatedAt={data?.timestamp}>
+    <DashboardPage status={data?.status} source={data?.source} updatedAt={data?.timestamp}>
       {/* Stale bar cảnh báo */}
       <div
         className="flex items-center gap-[9px] rounded-xl border border-grid-in/50 bg-grid-in/14 px-3.5 py-[9px] text-[13px] font-semibold text-grid-in"
@@ -233,7 +233,7 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
-    </DashboardShell>
+    </DashboardPage>
   );
 }
 

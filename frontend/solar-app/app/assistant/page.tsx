@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import DashboardShell from "@/components/DashboardShell";
+import DashboardPage from "@/components/DashboardPage";
 import ChatComposer from "@/components/assistant/ChatComposer";
 import ChatLog from "@/components/assistant/ChatLog";
 import NoticeList from "@/components/assistant/NoticeList";
@@ -91,7 +91,7 @@ export default function AssistantPage() {
   }
 
   return (
-    <DashboardShell source="" status={metricsError ? "error" : "online"}>
+    <DashboardPage source="" status={metricsError ? "error" : "online"}>
       {isClient && ai?.enabled ? (
         <ChatPanel metrics={metrics} notices={notices} onDismissNotice={dismiss} />
       ) : (
@@ -111,6 +111,6 @@ export default function AssistantPage() {
           )}
         </>
       )}
-    </DashboardShell>
+    </DashboardPage>
   );
 }

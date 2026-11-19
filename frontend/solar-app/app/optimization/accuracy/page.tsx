@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import DashboardShell from "@/components/DashboardShell";
+import DashboardPage from "@/components/DashboardPage";
 import Card from "@/components/Card";
 import { apiUrl, fetcher } from "@/lib/api";
 import { AccuracyResponse } from "@/lib/types/optimization";
@@ -19,7 +19,7 @@ export default function AccuracyPage() {
   const y = (value: number) => 280 - (value - min) * 240 / (max - min);
   const line = (key: "actual" | "pred" | "baseline_pred") => points.map((p, i) => `${x(i)},${y(p[key])}`).join(" ");
 
-  return <DashboardShell status={error ? "error" : isLoading ? "connecting" : "online"}>
+  return <DashboardPage status={error ? "error" : isLoading ? "connecting" : "online"}>
     <Link href="/optimization" className="text-sm text-pv">← Optimization</Link>
     <Card accent="pv">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -54,5 +54,5 @@ export default function AccuracyPage() {
         </>}
       </>}
     </Card>
-  </DashboardShell>;
+  </DashboardPage>;
 }

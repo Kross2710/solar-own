@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Card from "@/components/Card";
-import DashboardShell from "@/components/DashboardShell";
+import DashboardPage from "@/components/DashboardPage";
 import HistoryChart, { Range } from "../../components/HistoryChart";
 import HistoryStatGrid from "../../components/HistoryStatGrid";
 import SelfPoweredCard from "../../components/SelfPoweredCard";
@@ -118,7 +118,7 @@ export default function HistoryPage() {
   ];
 
   return (
-    <DashboardShell status="live" source="">
+    <DashboardPage status="live" source="">
       <section className="text-center" aria-labelledby="month-generation">
         <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="month-generation">
           This Month
@@ -141,6 +141,6 @@ export default function HistoryPage() {
       </Card>
 
       <SelfPoweredCard selfPoweredDays={selfPoweredDays} selfPoweredDates={selfPoweredDates} avgSelfPowered={avgSelfPowered} />
-    </DashboardShell>
+    </DashboardPage>
   );
 }
