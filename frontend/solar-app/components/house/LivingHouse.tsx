@@ -44,8 +44,6 @@ const WAVE = (() => {
 const HOME_BRIGHT_W = 3500;
 const SUN_UP_W = 100;
 const FULL_SOC = 99.5;
-// Low-battery warning starts this close to the reserve.
-const LOW_MARGIN_PCT = 3;
 // EVN tiers from here on cost noticeably more than the first ones.
 const HIGH_TIER = 4;
 
@@ -112,7 +110,6 @@ export default function LivingHouse({ scene }: { scene: SceneData }) {
 
   const wakeCount = useRisingEdge(sky.day && pvW >= SUN_UP_W);
   const fullCount = useRisingEdge(soc >= FULL_SOC);
-  const lowBattery = scene.reservePct != null && soc <= scene.reservePct + LOW_MARGIN_PCT && battW < FLOW_MIN_W;
   const highTier = gridW > FLOW_MIN_W && (scene.tier?.number ?? 0) >= HIGH_TIER;
   const selfPowered = (scene.consKwh ?? 0) >= 2 && scene.buyKwh != null && scene.buyKwh < 0.05;
 
@@ -300,19 +297,6 @@ export default function LivingHouse({ scene }: { scene: SceneData }) {
                 ))}
             </g>
             <rect x="0.32" y="0.06" width="0.03" height="0.58" fill="rgba(0,0,0,.12)" />
-            {lowBattery && (
-              <rect
-                x="0.32"
-                y="0.06"
-                width="0.18"
-                height="0.58"
-                fill="none"
-                stroke={COLORS.gridIn}
-                strokeWidth="1.6"
-                vectorEffect="non-scaling-stroke"
-                style={reduced ? { opacity: 0.8 } : { animation: "soft-pulse 1.8s ease-in-out infinite", animationPlayState: paused ? "paused" : "running" }}
-              />
-            )}
           </g>
 
           {fullCount > 0 && !reduced && (

@@ -1,4 +1,4 @@
-// Shapes of /api/ai_status, /api/chat (SSE), /api/action and /api/notices.
+// Shapes of /api/ai_status, /api/chat (SSE) and /api/notices.
 
 export interface AiStatusResponse {
   enabled: boolean;
@@ -6,24 +6,19 @@ export interface AiStatusResponse {
 
 export type ChatRole = "user" | "assistant";
 
-export interface ProposedAction {
-  kind: "set_reserve" | string;
-  params: { reserve_pct?: number };
-  current: number;
-  reason: string;
+export interface ChatEntry {
+  id: string;
+  type: "message";
+  role: ChatRole;
+  content: string;
+  error?: boolean;
 }
-
-export type ActionState = "pending" | "applying" | "applied" | "dismissed" | "failed";
-
-export type ChatEntry =
-  | { id: string; type: "message"; role: ChatRole; content: string; error?: boolean }
-  | { id: string; type: "action"; action: ProposedAction; state: ActionState };
 
 export type ChatStreamEvent =
   | { type: "status"; tool: string }
   | { type: "delta"; text: string }
   | { type: "error"; error_code: string }
-  | { type: "done"; actions: ProposedAction[] };
+  | { type: "done" };
 
 export type NoticeSeverity = "warn" | "info";
 

@@ -30,7 +30,7 @@ On startup the API fills missing SEMS history, patches recent sample gaps, rebui
 | `/optimization/accuracy` | Walk-forward actual/predicted chart, model selector and earlier-days baseline |
 | `/assistant` | Rule-based notices and a streaming chat that can look up history before answering |
 
-The gear in the header opens Settings: text size, battery reserve used by the dashboard estimates (10–80%, written only to `config.json`), manual sync, CSV export of daily history, and system status. Text size is stored in the browser.
+The gear in the header opens Settings: text size, manual sync, CSV export of daily history, and system status. Text size is stored in the browser.
 
 A warning notice puts a dot on the Assistant tab. Notices cover an inverter offline for 30 minutes, a night load well above the recent average, a projected bill well above the last real bill, an expensive tier coming this cycle, and a week of wasted sun that jumped versus the week before. They expire on their own and can be dismissed.
 
@@ -57,7 +57,6 @@ Create `config.json` in the project root. Start with mock data, which needs no a
   "history_source": "mock",
   "station_name": "Home Solar",
   "capacity_kw": 16.0,
-  "battery_reserve_percent": 20,
   "price_per_kwh": 2500,
   "currency": "VND",
   "poll_interval_seconds": 5,
@@ -123,7 +122,7 @@ Leave `station_id` empty to use the first station on the account.
 }
 ```
 
-`provider` can be `gemini` (needs `api_key`) or `ollama` (local, default `http://127.0.0.1:11434`). Gemini can call tools for a day, daily history, the billing cycle, curtailment, the weather forecast, and the hourly profile. The only setting it can propose is the battery reserve, and that change is applied only after you confirm it.
+`provider` can be `gemini` (needs `api_key`) or `ollama` (local, default `http://127.0.0.1:11434`). Gemini can call tools for a day, daily history, the billing cycle, curtailment, the weather forecast, and the hourly profile.
 
 ## Tests
 

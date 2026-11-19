@@ -25,7 +25,7 @@ interface ChatPanelProps {
 }
 
 function ChatPanel({ metrics, notices, onDismissNotice }: ChatPanelProps) {
-  const { entries, live, busy, send, applyAction, dismissAction, clear } = useChat();
+  const { entries, live, busy, send, clear } = useChat();
   const started = entries.length > 0 || busy;
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -59,8 +59,6 @@ function ChatPanel({ metrics, notices, onDismissNotice }: ChatPanelProps) {
           entries={entries}
           greeting={greeting(metrics)}
           live={live}
-          onApply={applyAction}
-          onDismiss={dismissAction}
         />
         {!started && <SuggestedQuestions onAsk={send} variant="cards" />}
         <div ref={endRef} />

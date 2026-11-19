@@ -140,7 +140,6 @@ export interface SceneData {
   tomorrowKwh?: number | null;
   consKwh?: number | null;
   buyKwh?: number | null;
-  reservePct?: number | null;
   /** Current EVN tier, 1-based, with its price in đ/kWh. */
   tier?: { number: number; price: number | null } | null;
   battery?: { title: string; detail: string } | null;

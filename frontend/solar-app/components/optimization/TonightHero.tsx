@@ -11,7 +11,7 @@ interface TonightHeroProps {
 
 const KIND_LABEL: Record<DayKind, string> = { sunny: "Higher output", mid: "Typical output", poor: "Lower output" };
 const KIND_ICON: Record<DayKind, string> = { sunny: "fa-sun", mid: "fa-cloud-sun", poor: "fa-cloud-rain" };
-// Leave headroom so the larger of usable/need never touches the bar end.
+// Leave headroom so the larger of stored/need never touches the bar end.
 const BAR_HEADROOM = 1.1;
 
 function markerLabelStyle(pct: number): CSSProperties {
@@ -20,8 +20,8 @@ function markerLabelStyle(pct: number): CSSProperties {
 }
 
 function BatteryTonight({ plan }: { plan: BatteryPlan }) {
-  const scale = Math.max(plan.usableKwh, plan.needKwh ?? 0, 0.1) * BAR_HEADROOM;
-  const usablePct = (plan.usableKwh / scale) * 100;
+  const scale = Math.max(plan.storedKwh, plan.needKwh ?? 0, 0.1) * BAR_HEADROOM;
+  const storedPct = (plan.storedKwh / scale) * 100;
   const needPct = plan.needKwh != null ? (plan.needKwh / scale) * 100 : null;
 
   return (
@@ -31,14 +31,14 @@ function BatteryTonight({ plan }: { plan: BatteryPlan }) {
           <i className="fa-solid fa-battery-three-quarters mr-1.5 text-batt" />
           Battery tonight · {Math.round(plan.socPct)}%
         </span>
-        <span className="tabular-nums text-zinc-200">{fmtNum(plan.usableKwh, 1)} kWh usable</span>
+        <span className="tabular-nums text-zinc-200">{fmtNum(plan.storedKwh, 1)} kWh stored</span>
       </div>
 
       <div className={`relative mt-2 ${needPct != null ? "mb-5" : ""}`}>
         <div className="h-2.5 overflow-hidden rounded-full bg-white/5">
           <span
-            className={`block h-full rounded-full ${plan.enough === false ? "bg-batt/60" : "bg-batt"}`}
-            style={{ width: `${usablePct}%` }}
+            className="block h-full rounded-full bg-batt"
+            style={{ width: `${storedPct}%` }}
           />
         </div>
         {needPct != null && (
@@ -62,8 +62,6 @@ function BatteryTonight({ plan }: { plan: BatteryPlan }) {
 }
 
 export default function TonightHero({ kind, tomorrowKwh, advice, plan }: TonightHeroProps) {
-  const enough = plan?.enough;
-
   return (
     <section className="text-center" aria-labelledby="tomorrow-forecast">
       <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400" id="tomorrow-forecast">
@@ -89,9 +87,7 @@ export default function TonightHero({ kind, tomorrowKwh, advice, plan }: Tonight
       {plan && <BatteryTonight plan={plan} />}
 
       <p
-        className={`mx-auto mt-3 max-w-[340px] text-[13px] leading-relaxed ${
-          enough === false ? "text-pv" : "text-zinc-300"
-        }`}
+        className="mx-auto mt-3 max-w-[340px] text-[13px] leading-relaxed text-zinc-300"
       >
         {advice}
       </p>

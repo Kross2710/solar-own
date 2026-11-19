@@ -26,9 +26,9 @@ test('Vietnam day/hour and countdown ignore process timezone', () => {
   assert.equal(minutesLeftInWindow({ from: 7, to: 13 }, new Date('2026-11-06T01:52:00Z')), 248);
   assert.deepEqual(siteClock(new Date('2026-11-06T17:02:00Z')), { day: '2026-11-07', hour: 0, minute: 2 });
 });
-test('battery clock uses Vietnam time across day boundary', () => {
-  const result = batteryOutlook({ battery_soc: 50, battery_capacity_kwh: 20, battery_power_w: -1000, battery_reserve_percent: 20 }, new Date('2026-11-06T16:52:00Z'));
-  assert.match(result.detail, /05:50/);
+test('charging estimate uses Vietnam time', () => {
+  const result = batteryOutlook({ battery_soc: 50, battery_capacity_kwh: 20, battery_power_w: 2000 }, new Date('2026-11-06T01:52:00Z'));
+  assert.match(result.title, /13:50/);
 });
 test('late night has no fixed 21-23h warning and spare sun needs battery room checked', () => {
   const metrics = { pv_power_w: 5000, load_power_w: 1000, battery_soc: 40, battery_capacity_kwh: 20 };

@@ -44,8 +44,6 @@ PERSONA = (
     "Bạn có CÔNG CỤ tra dữ liệu (chi tiết 1 ngày bất kỳ, lịch sử theo khoảng ngày, báo cáo kỳ hoá đơn, "
     "điện nắng bị bỏ phí, dự báo thời tiết, hồ sơ 24 giờ) — khi câu hỏi nhắc tới một NGÀY/THÁNG/KỲ cụ thể "
     "hoặc cần dữ liệu không có sẵn bên dưới, hãy GỌI công cụ thay vì đoán hay nói không biết. "
-    "Nếu thấy một thay đổi cài đặt RÕ RÀNG có lợi (vd mai mưa lớn nên nâng mức pin dự phòng), "
-    "gọi propose_action để đề xuất — người dùng sẽ bấm xác nhận, bạn KHÔNG tự thay đổi gì."
 )
 
 # Bản English của PERSONA — CÙNG các ràng buộc hành vi (kết luận trước, làm tròn, không jargon,
@@ -66,8 +64,6 @@ PERSONA_EN = (
     "You have TOOLS to look up data (any single day's detail, history over a date range, billing-cycle "
     "reports, wasted solar, weather forecast, 24-hour usage profile) — when the question mentions a "
     "specific day/month/cycle or needs data not shown below, CALL a tool instead of guessing or refusing. "
-    "If a settings change is CLEARLY beneficial (e.g. heavy rain tomorrow → raise the battery reserve), "
-    "call propose_action to suggest it — the user confirms with a button; you never change anything yourself."
 )
 
 # Câu lùi khi model không trả lời được — theo ngôn ngữ UI.

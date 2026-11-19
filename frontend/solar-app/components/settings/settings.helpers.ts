@@ -1,14 +1,6 @@
 import { parseDateMonth, parseDateMonthYear } from "@/lib/format";
 import { StatusResponse, SyncResult } from "@/lib/types/system";
 
-export const RESERVE_MIN_PCT = 10;
-export const RESERVE_MAX_PCT = 80;
-export const RESERVE_STEP_PCT = 5;
-
-export function clampReserve(value: number): number {
-  return Math.min(RESERVE_MAX_PCT, Math.max(RESERVE_MIN_PCT, Math.round(value)));
-}
-
 const STEP_NAMES: Record<string, string> = {
   sems_daily: "daily history",
   samples: "minute curve",

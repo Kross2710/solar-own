@@ -11,7 +11,6 @@ export interface MetricsResponse {
   today_buy_kwh?: number;
   total_energy_kwh?: number;
   battery_capacity_kwh?: number | null;
-  battery_reserve_percent?: number | null;
   capacity_kw?: number | null;
   lat?: number | null;
   lon?: number | null;

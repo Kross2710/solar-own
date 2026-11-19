@@ -18,7 +18,6 @@ export interface StatusResponse {
   evn: { enabled: boolean; last_day: string | null; bills: number };
   forecast: { ready: boolean; model: string | null; mae_kwh: number | null; n_train: number | null; updated_at: string | null };
   assistant: boolean;
-  battery_reserve_percent: number;
 }
 
 export interface SyncStartResponse {

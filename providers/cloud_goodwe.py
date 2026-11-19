@@ -168,7 +168,6 @@ class CloudGoodWeProvider(Provider):
         min_refresh_s: int = 60,
         price_per_kwh: Optional[float] = None,
         currency: Optional[str] = None,
-        battery_reserve_percent: float = 20,
     ):
         self.account = account
         self.password = password
@@ -178,7 +177,6 @@ class CloudGoodWeProvider(Provider):
         self.capacity_kw = capacity_kw
         self.price_per_kwh = price_per_kwh
         self.currency = currency
-        self.battery_reserve_percent = battery_reserve_percent
         self.min_refresh_s = max(20, int(min_refresh_s))
         self._tz_offset = TIME_OFFSETS.get(self.region, 7)
         self._web = REGIONS.get(self.region if self.region != "auto" else "hk", REGIONS["hk"])
@@ -516,7 +514,6 @@ class CloudGoodWeProvider(Provider):
             month_income=month_income,
             total_income=total_income,
             battery_capacity_kwh=_num(info.get("batteryCapacity")),
-            battery_reserve_percent=self.battery_reserve_percent,
             lat=_num(address.get("latitude")),
             lon=_num(address.get("longitude")),
         )

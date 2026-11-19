@@ -12,7 +12,6 @@ export type DayKind = "sunny" | "mid" | "poor";
 const SUNNY_RATIO = 0.85;
 const POOR_RATIO = 0.55;
 const QUAL_STORAGE_KEY = "battQual";
-const DEFAULT_RESERVE_PCT = 20;
 
 export function tomorrowOf(days: ForecastDay[]): ForecastDay | null {
   return days.find((day) => !day.today) ?? null;
@@ -53,11 +52,8 @@ export function planTitle(kind: DayKind | null, kwh: number | null): string {
 
 export interface BatteryPlan {
   socPct: number;
-  reservePct: number;
-  capacityKwh: number;
-  usableKwh: number;          // above the reserve, right now
+  storedKwh: number;
   needKwh: number | null;     // typical overnight consumption
-  enough: boolean | null;
 }
 
 export function batteryPlan(metrics: MetricsResponse | undefined, needKwh: number | null): BatteryPlan | null {
@@ -65,15 +61,11 @@ export function batteryPlan(metrics: MetricsResponse | undefined, needKwh: numbe
   const capacity = metrics?.battery_capacity_kwh;
   if (soc == null || !capacity) return null;
 
-  const reserve = metrics?.battery_reserve_percent ?? DEFAULT_RESERVE_PCT;
-  const usable = Math.max(0, ((soc - reserve) / 100) * capacity);
+  const storedKwh = (soc / 100) * capacity;
   return {
     socPct: soc,
-    reservePct: reserve,
-    capacityKwh: capacity,
-    usableKwh: usable,
+    storedKwh,
     needKwh,
-    enough: needKwh == null ? null : usable >= needKwh,
   };
 }
 
@@ -81,7 +73,6 @@ export function batteryPlan(metrics: MetricsResponse | undefined, needKwh: numbe
 const BATTERY_IDLE_W = 50;
 // Charge that would finish after this hour is too slow to count as "full today".
 const SUN_LAST_HOUR = 18;
-const RUNTIME_CAP_MIN = 12 * 60;
 const ROUND_MIN = 10;
 
 export interface BatteryOutlook {
@@ -97,25 +88,16 @@ function fmtClock(at: Date): string {
   return siteTime(at);
 }
 
-// How long the battery lasts at the current load, or when it will be full.
+// Current battery flow and estimated finish time while charging.
 export function batteryOutlook(metrics: MetricsResponse | undefined, now: Date): BatteryOutlook | null {
   const soc = metrics?.battery_soc;
   const capacity = metrics?.battery_capacity_kwh;
   if (soc == null || !capacity) return null;
 
-  const reserve = metrics?.battery_reserve_percent ?? DEFAULT_RESERVE_PCT;
-  const usableKwh = ((soc - reserve) / 100) * capacity;
   const battKw = (metrics?.battery_power_w ?? 0) / 1000;
 
   if (battKw * 1000 < -BATTERY_IDLE_W) {
-    if (usableKwh <= 0) return { title: `Battery at reserve · ${soc}%`, detail: "the home runs on the grid now" };
-    const minutes = (usableKwh / -battKw) * 60;
-    if (minutes > RUNTIME_CAP_MIN) return { title: "Battery lasts 12h+", detail: `${soc}% at this load` };
-    const rounded = Math.max(ROUND_MIN, Math.round(minutes / ROUND_MIN) * ROUND_MIN);
-    return {
-      title: `Battery lasts ~${fmtDuration(rounded)}`,
-      detail: `reaches ${reserve}% around ${fmtClock(clockIn(now, minutes))} at this load`,
-    };
+    return { title: `Discharging · ${soc}%`, detail: `supplying ${(-battKw).toFixed(1)} kW` };
   }
 
   if (battKw * 1000 > BATTERY_IDLE_W) {
@@ -130,22 +112,15 @@ export function batteryOutlook(metrics: MetricsResponse | undefined, now: Date):
   if (soc >= BATTERY_FULL_PCT) return { title: `Battery full · ${soc}%`, detail: "idle" };
   return {
     title: `Battery ${soc}%`,
-    detail: usableKwh > 0 ? `idle · ${usableKwh.toFixed(1)} kWh above the ${reserve}% reserve` : "idle at the reserve",
+    detail: "idle",
   };
 }
 
-export function planAdvice(kind: DayKind | null, enough: boolean | null): string {
-  if (!kind) return "Waiting for tomorrow's forecast to suggest tonight's battery plan…";
-  if (enough === false) {
-    return kind === "sunny"
-      ? "Use the battery tonight and recharge tomorrow — it covers part of the night, the grid covers the rest."
-      : "Save the battery and avoid heavy loads tonight — it won't last the night, the grid covers the rest.";
-  }
-  if (kind === "sunny") {
-    return `Use the battery freely tonight${enough ? " — it will last the night" : ""}, it recharges tomorrow morning.`;
-  }
-  if (kind === "poor") return "Save the battery for tomorrow morning — avoid heavy loads tonight.";
-  return "Use the battery normally, keep it around the reserve level.";
+export function planAdvice(kind: DayKind | null): string {
+  if (!kind) return "Waiting for tomorrow’s forecast…";
+  if (kind === "poor") return "Lower solar output is expected tomorrow. Consider postponing flexible loads.";
+  if (kind === "sunny") return "Shift flexible loads into tomorrow’s sunny hours.";
+  return "Plan flexible loads around tomorrow’s solar production.";
 }
 
 // ---------- "Do now" suggestions ----------
@@ -228,7 +203,7 @@ export function buildSuggestions({
   }
 
   const plan = batteryPlan(metrics, null);
-  if (tier && tier.prices.length && hour >= 18 && hour < 23 && plan && plan.usableKwh < 3) {
+  if (tier && tier.prices.length && hour >= 18 && hour < 23 && plan && plan.storedKwh < 3) {
     const price = tier.cur_price;
     out.push({
       id: "avoid-evening",
