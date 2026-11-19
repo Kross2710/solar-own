@@ -73,22 +73,34 @@ POLL_ERROR_LOG_EVERY = 300
 
 async def poll_loop(runtime: AppRuntime) -> None:
     last_error: datetime | None = None
-    online = True
+    down = False
     while True:
         try:
             await snapshot(runtime)
         except asyncio.CancelledError:
             raise
         except Exception as error:
+            # snapshot() itself failing (providers normally return status=offline,
+            # so this path is rare). Throttle so a broken call can't spam the log.
             now = datetime.now(VN_TZ)
             if last_error is None or (now - last_error).total_seconds() >= POLL_ERROR_LOG_EVERY:
                 last_error = now
                 print(f"  [poll] error: {type(error).__name__}: {error}", flush=True)
-            online = False
+            down = True
         else:
-            if not online:
+            # An outage is signalled by status, not an exception: a live provider
+            # that can't reach the inverter returns "offline"/"error", and snapshot()
+            # flips live_fallback_on when it starts serving from the history provider.
+            now_down = runtime.live_fallback_on or (
+                runtime.latest is not None
+                and runtime.latest.get("status") in ("offline", "error")
+            )
+            if now_down and not down:
+                print("  [poll] live provider offline", flush=True)
+            elif not now_down and down:
                 print("  [poll] recovered: live provider back online", flush=True)
-                online = True
+                last_error = None  # reset throttle so a later outage isn't suppressed
+            down = now_down
         await asyncio.sleep(runtime.poll_interval)
 
 
