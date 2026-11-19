@@ -5,9 +5,9 @@ import { MoneyResponse } from "@/lib/types/money";
 const REFRESH_MS = 5 * 60 * 1000;
 
 export function useMoney() {
-  const { data, error, isLoading } = useSWR<MoneyResponse>(apiUrl("/api/money"), fetcher, {
+  const { data, error, isLoading, isValidating } = useSWR<MoneyResponse>(apiUrl("/api/money"), fetcher, {
     refreshInterval: REFRESH_MS,
   });
 
-  return { money: data, error, isLoading };
+  return { money: data, error, isLoading, isValidating };
 }

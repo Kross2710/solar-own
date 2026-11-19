@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import DashboardShell from "@/components/DashboardShell";
+import DashboardPage, { PageUnavailable } from "@/components/DashboardPage";
 import ChatComposer from "@/components/assistant/ChatComposer";
 import ChatLog from "@/components/assistant/ChatLog";
 import NoticeList from "@/components/assistant/NoticeList";
@@ -79,19 +79,13 @@ export default function AssistantPage() {
   const isClient = useIsClient();
   const { data: ai, error: aiError } = useAiStatus();
   const { data: noticeData, dismiss } = useNotices();
-  const { data: metrics, error: metricsError } = useMetrics();
+  const { data: metrics, error: metricsError, isValidating } = useMetrics();
   const notices = noticeData?.notices ?? [];
 
-  if (aiError && metricsError) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ink font-sans text-grid-in">
-        Can&apos;t get data from Backend
-      </div>
-    );
-  }
+  if (!ai && !metrics) return <PageUnavailable failed={Boolean(aiError && metricsError)} />;
 
   return (
-    <DashboardShell source="" status={metricsError ? "error" : "online"}>
+    <DashboardPage status={metricsError || aiError ? "error" : "online"} refreshing={isValidating} updatedAt={metrics?.timestamp}>
       {isClient && ai?.enabled ? (
         <ChatPanel metrics={metrics} notices={notices} onDismissNotice={dismiss} />
       ) : (
@@ -111,6 +105,6 @@ export default function AssistantPage() {
           )}
         </>
       )}
-    </DashboardShell>
+    </DashboardPage>
   );
 }

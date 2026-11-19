@@ -7,6 +7,9 @@ import UpdatedAgo from "@/components/overview/UpdatedAgo";
 import SettingsSheet from "@/components/settings/SettingsSheet";
 import { useNotices } from "@/hooks/useAssistant";
 
+import { useSectionTransition } from "@/hooks/useSectionTransition";
+import { PageStatusContext, type PageStatus } from "./DashboardPage";
+
 const NAV_ITEMS = [
     { href: "/", label: "Overview", icon: "fa-house" },
     { href: "/history", label: "History", icon: "fa-chart-column" },
@@ -21,23 +24,16 @@ const pillClass =
 const DOT_CLASS: Record<string, string> = {
     online: "bg-good text-good/60 animate-[status-blink_2s_infinite]",
     error: "bg-grid-in text-grid-in/55 animate-[status-blink_1.3s_infinite]",
-    connecting: "bg-pv text-pv/50 animate-[status-blink_2.4s_infinite]",
+    updating: "bg-pv text-pv/50 animate-[status-blink_2.8s_infinite]",
+    connecting: "bg-pv text-pv/50 animate-[status-blink_2.8s_infinite]",
 };
 
-interface DashboardShellProps {
-    children: ReactNode;
-    status?: string;
-    source?: string;
-    updatedAt?: string;
-}
-
-export default function DashboardShell({
-    children,
-    status = "online",
-    source,
-    updatedAt,
-}: DashboardShellProps) {
+export default function DashboardShell({ children }: { children: ReactNode }) {
     const pathname = usePathname();
+    const { mainRef, navigate } = useSectionTransition(pathname, NAV_ITEMS);
+    const [pageStatus, setPageStatus] = useState<PageStatus>();
+    const activeStatus = pageStatus?.pathname === pathname ? pageStatus : undefined;
+    const { status, source, updatedAt } = activeStatus ?? {};
     const [settingsOpen, setSettingsOpen] = useState(false);
     const { data: noticeData } = useNotices();
     // Only warnings earn a dot; info notices wait quietly on the Assistant tab.
@@ -63,12 +59,12 @@ export default function DashboardShell({
         title = "Assistant";
     }
 
-    const statusPill = (
+    const statusPill = status ? (
         <span className={pillClass}>
             <span className={`inline-block size-1.5 rounded-full shadow-[0_0_6px_currentColor] motion-reduce:animate-none ${DOT_CLASS[status] ?? DOT_CLASS.online}`} />
             {status}
         </span>
-    );
+    ) : null;
     const settingsButton = (
         <button
             className="inline-flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full text-[15px] text-dim transition-colors duration-200 hover:text-fg"
@@ -97,6 +93,7 @@ export default function DashboardShell({
                             <Link
                                 key={href}
                                 href={href}
+                                onNavigate={event => navigate(event, href)}
                                 aria-current={active ? "page" : undefined}
                                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-200 ${active ? "bg-white/10 font-bold text-fg" : "font-semibold text-dim hover:bg-white/[0.04] hover:text-fg"}`}
                             >
@@ -151,6 +148,8 @@ export default function DashboardShell({
                             <Link
                                 key={href}
                                 href={href}
+                                onNavigate={event => navigate(event, href)}
+                                aria-current={active ? "page" : undefined}
                                 className={`flex flex-1 flex-col items-center gap-1 px-1 py-1.5 text-[10.5px] whitespace-nowrap transition-colors duration-200 hover:text-fg ${active ? "font-bold text-fg" : "font-semibold text-dim"}`}
                             >
                                 <span className={`relative flex size-[34px] items-center justify-center rounded-xl border text-[15px] leading-none transition-[background-color,border-color] duration-200 ${active ? "border-white/16 bg-white/10" : "border-transparent"}`}>
@@ -165,7 +164,7 @@ export default function DashboardShell({
                     })}
                 </nav>
 
-                <main className="flex flex-col gap-7">{children}</main>
+                <main ref={mainRef} className="dashboard-content flex flex-col gap-7"><PageStatusContext.Provider value={setPageStatus}>{children}</PageStatusContext.Provider></main>
             </div>
 
             <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />

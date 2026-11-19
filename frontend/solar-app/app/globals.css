@@ -68,3 +68,21 @@ body {
 /* Components size text in fixed px, so the large text modes zoom the whole app. */
 :root[data-fontscale="lg"] .app { zoom: 1.12; }
 :root[data-fontscale="xl"] .app { zoom: 1.26; }
+
+/* Only the page content participates in a tab transition. */
+html[data-section-slide] { view-transition-name: none; --slide-offset: 28px; }
+html[data-section-slide="back"] { --slide-offset: -28px; }
+html[data-section-slide] .dashboard-content { view-transition-name: dashboard-content; }
+html[data-section-slide]::view-transition { pointer-events: none; }
+::view-transition-group(dashboard-content) { animation-duration: 0s; }
+::view-transition-old(dashboard-content),
+::view-transition-new(dashboard-content) {
+  height: 100%;
+  object-fit: none;
+  object-position: top left;
+  mix-blend-mode: normal;
+  animation: section-enter 260ms cubic-bezier(.22,.61,.36,1) both;
+}
+::view-transition-old(dashboard-content) { animation-name: section-exit; }
+@keyframes section-enter { from { transform: translateX(var(--slide-offset)); opacity: 0; } }
+@keyframes section-exit { to { transform: translateX(calc(-1 * var(--slide-offset))); opacity: 0; } }

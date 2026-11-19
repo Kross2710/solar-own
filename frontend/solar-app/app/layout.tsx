@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { COLORS } from "@/lib/colors";
 import "./globals.css";
+import DashboardShell from "@/components/DashboardShell";
 
 const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam",
@@ -47,7 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        {children}
+        <DashboardShell>{children}</DashboardShell>
       </body>
     </html>
   );
