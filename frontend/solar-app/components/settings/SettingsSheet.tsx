@@ -2,15 +2,10 @@
 
 import { ReactNode, useEffect, useRef, useState } from "react";
 import UpdatedAgo from "@/components/overview/UpdatedAgo";
-import { useSWRConfig } from "swr";
 import { FontScale, useFontScale, useStatus } from "@/hooks/useSettings";
 import { apiUrl } from "@/lib/api";
 import { SyncStartResponse } from "@/lib/types/system";
 import {
-  RESERVE_MAX_PCT,
-  RESERVE_MIN_PCT,
-  RESERVE_STEP_PCT,
-  clampReserve,
   evnLine,
   forecastLine,
   historyLine,
@@ -37,75 +32,6 @@ const segmentButton = (on: boolean) =>
   `flex-1 rounded-full px-3 py-2 text-[13px] font-semibold transition-colors ${
     on ? "bg-white/15 text-zinc-50" : "text-zinc-400 hover:text-zinc-200"
   }`;
-
-function ReserveControl({ saved }: { saved: number }) {
-  const { mutate } = useSWRConfig();
-  const [draft, setDraft] = useState<number | null>(null);
-  const [state, setState] = useState<"idle" | "saving" | "error">("idle");
-  const value = draft ?? saved;
-  const dirty = draft !== null && draft !== saved;
-
-  const save = async () => {
-    setState("saving");
-    try {
-      const response = await fetch(apiUrl("/api/action"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "set_reserve", params: { reserve_pct: value } }),
-      });
-      if (!(await response.json())?.ok) throw new Error("rejected");
-      await Promise.all([mutate(apiUrl("/api/status")), mutate(apiUrl("/api/metrics"))]);
-      setDraft(null);
-      setState("idle");
-    } catch {
-      setState("error");
-    }
-  };
-
-  const step = (delta: number) => {
-    setDraft(clampReserve(value + delta));
-    setState("idle");
-  };
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <button
-          aria-label="Lower reserve"
-          className="grid size-10 place-items-center rounded-full bg-white/5 text-zinc-200 disabled:opacity-30"
-          disabled={value <= RESERVE_MIN_PCT}
-          onClick={() => step(-RESERVE_STEP_PCT)}
-          type="button"
-        >
-          <i className="fa-solid fa-minus" />
-        </button>
-        <output aria-live="polite" className="min-w-16 text-center text-[24px] font-light tabular-nums text-batt">
-          {value}%
-        </output>
-        <button
-          aria-label="Raise reserve"
-          className="grid size-10 place-items-center rounded-full bg-white/5 text-zinc-200 disabled:opacity-30"
-          disabled={value >= RESERVE_MAX_PCT}
-          onClick={() => step(RESERVE_STEP_PCT)}
-          type="button"
-        >
-          <i className="fa-solid fa-plus" />
-        </button>
-        {dirty && (
-          <button
-            className="ml-auto rounded-full bg-pv px-4 py-2 text-[13px] font-semibold text-ink disabled:opacity-60"
-            disabled={state === "saving"}
-            onClick={save}
-            type="button"
-          >
-            {state === "saving" ? "Saving…" : "Save"}
-          </button>
-        )}
-      </div>
-      {state === "error" && <p className="text-[12px] text-grid-in">Couldn&apos;t save — try again.</p>}
-    </div>
-  );
-}
 
 function DataControls({ active }: { active: boolean }) {
   const { data: status, error, mutate } = useStatus(active);
@@ -182,7 +108,6 @@ function SystemList({ active }: { active: boolean }) {
 export default function SettingsSheet({ open, onClose, updatedAt }: { open: boolean; onClose: () => void; updatedAt?: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [scale, setScale] = useFontScale();
-  const { data: status } = useStatus(open);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -230,13 +155,6 @@ export default function SettingsSheet({ open, onClose, updatedAt }: { open: bool
               </button>
             ))}
           </div>
-        </Section>
-
-        <Section
-          hint="Battery kept for outages. Used in the dashboard's estimates only — nothing is written to the inverter."
-          title="Battery reserve"
-        >
-          {status ? <ReserveControl key={status.battery_reserve_percent} saved={status.battery_reserve_percent} /> : null}
         </Section>
 
         <Section hint="History syncs from SEMS on startup and every 12 hours." title="Data">

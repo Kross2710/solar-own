@@ -12,7 +12,8 @@ export type DayKind = "sunny" | "mid" | "poor";
 const SUNNY_RATIO = 0.85;
 const POOR_RATIO = 0.55;
 const QUAL_STORAGE_KEY = "battQual";
-const DEFAULT_RESERVE_PCT = 20;
+// Configured discharge floor for this installation (read-only estimate).
+const INVERTER_DISCHARGE_FLOOR_PCT = 20;
 
 export function tomorrowOf(days: ForecastDay[]): ForecastDay | null {
   return days.find((day) => !day.today) ?? null;
@@ -65,7 +66,7 @@ export function batteryPlan(metrics: MetricsResponse | undefined, needKwh: numbe
   const capacity = metrics?.battery_capacity_kwh;
   if (soc == null || !capacity) return null;
 
-  const reserve = metrics?.battery_reserve_percent ?? DEFAULT_RESERVE_PCT;
+  const reserve = INVERTER_DISCHARGE_FLOOR_PCT;
   const usable = Math.max(0, ((soc - reserve) / 100) * capacity);
   return {
     socPct: soc,
@@ -103,12 +104,12 @@ export function batteryOutlook(metrics: MetricsResponse | undefined, now: Date):
   const capacity = metrics?.battery_capacity_kwh;
   if (soc == null || !capacity) return null;
 
-  const reserve = metrics?.battery_reserve_percent ?? DEFAULT_RESERVE_PCT;
-  const usableKwh = ((soc - reserve) / 100) * capacity;
+  const reserve = INVERTER_DISCHARGE_FLOOR_PCT;
+  const usableKwh = Math.max(0, ((soc - reserve) / 100) * capacity);
   const battKw = (metrics?.battery_power_w ?? 0) / 1000;
 
   if (battKw * 1000 < -BATTERY_IDLE_W) {
-    if (usableKwh <= 0) return { title: `Battery at reserve · ${soc}%`, detail: "the home runs on the grid now" };
+    if (usableKwh <= 0) return { title: `Battery at reserve · ${soc}%`, detail: "no estimated energy available above the discharge floor" };
     const minutes = (usableKwh / -battKw) * 60;
     if (minutes > RUNTIME_CAP_MIN) return { title: "Battery lasts 12h+", detail: `${soc}% at this load` };
     const rounded = Math.max(ROUND_MIN, Math.round(minutes / ROUND_MIN) * ROUND_MIN);

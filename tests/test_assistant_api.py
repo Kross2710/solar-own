@@ -16,7 +16,6 @@ from providers.history import HistoryStore
 
 class FakeProvider(Provider):
     name = "mock"
-    battery_reserve_percent = 20.0
 
     async def get_metrics(self) -> Metrics:
         return Metrics(source="mock", status="online", battery_soc=80)
@@ -30,8 +29,8 @@ class FakeAssistant:
 
     async def chat_stream(self, context, messages, lang="en", tools=None):
         self.seen = {"context": context, "messages": messages, "lang": lang}
+        self.seen["tools"] = set(tools)
         yield {"type": "status", "tool": "get_day_detail"}
-        await tools["propose_action"]["fn"]({"action": "set_reserve", "reserve_pct": 40, "reason": "rain"})
         yield {"type": "delta", "text": "Keep more "}
         yield {"type": "delta", "text": "battery tonight."}
 
@@ -64,14 +63,16 @@ class AssistantApiTests(TestCase):
         self.client_context.__exit__(None, None, None)
         self.tmp.cleanup()
 
-    def test_chat_streams_status_text_and_actions(self) -> None:
+    def test_chat_streams_status_text_and_done(self) -> None:
         response = self.client.post("/api/chat", json={"messages": [{"role": "user", "content": "Rain tomorrow?"}]})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
         events = _events(response.text)
         self.assertEqual([e["type"] for e in events], ["status", "delta", "delta", "done"])
-        self.assertEqual(events[-1]["actions"][0]["params"], {"reserve_pct": 40})
+        self.assertEqual(events[-1]["actions"], [])
+        self.assertNotIn("propose_action", self.assistant.seen["tools"])
+        self.assertIn("get_day_detail", self.assistant.seen["tools"])
         self.assertEqual(self.assistant.seen["lang"], "en")
         self.assertIn("this_bill_cycle", self.assistant.seen["context"])
 
@@ -88,17 +89,6 @@ class AssistantApiTests(TestCase):
         self.assertEqual(self.client.get("/api/ai_status").json(), {"enabled": False})
         self.assertEqual(self.client.post("/api/chat", json={}).json(), {"enabled": False})
 
-    def test_action_applies_bounded_reserve(self) -> None:
-        bad = self.client.post("/api/action", json={"kind": "set_reserve", "params": {"reserve_pct": 95}})
-        self.assertEqual(bad.status_code, 400)
-        self.assertEqual(bad.json()["error_code"], "out_of_range")
-
-        ok = self.client.post("/api/action", json={"kind": "set_reserve", "params": {"reserve_pct": 35}})
-        self.assertEqual(ok.json(), {"ok": True, "kind": "set_reserve", "old": 20.0, "new": 35})
-        self.assertEqual(self.runtime.config["battery_reserve_percent"], 35)
-        self.assertEqual(self.provider.battery_reserve_percent, 35.0)
-        self.assertFalse((Path(self.tmp.name) / "config.json").exists())
-
     def test_status_sync_and_export(self) -> None:
         self.store.backfill_energy({"2026-09-01": {"cons": 40.0, "buy": 8.0}})
 
@@ -106,7 +96,8 @@ class AssistantApiTests(TestCase):
         self.assertEqual(status["history"], {"days": 1, "first_day": "2026-09-01", "last_day": "2026-09-01"})
         self.assertFalse(status["sync"]["supported"])
         self.assertTrue(status["assistant"])
-        self.assertEqual(status["battery_reserve_percent"], 20)
+        self.assertNotIn("battery_reserve_percent", status)
+        self.assertEqual(self.client.post("/api/action", json={"kind": "set_reserve"}).status_code, 404)
 
         self.runtime.last_sync = {"finished_at": datetime.now(VN_TZ).isoformat(timespec="seconds")}
         too_soon = self.client.post("/api/sync")

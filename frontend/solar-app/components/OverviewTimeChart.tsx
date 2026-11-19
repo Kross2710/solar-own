@@ -18,13 +18,11 @@ export interface PowerHistoryPoint {
 interface OverviewTimeChartProps {
   data: PowerHistoryPoint[];
   mode: OverviewChartMode;
-  reservePercent?: number;
 }
 
 export default function OverviewTimeChart({
   data,
   mode,
-  reservePercent = 20,
 }: OverviewTimeChartProps) {
   const chartElement = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<ApexCharts | null>(null);
@@ -64,10 +62,6 @@ export default function OverviewTimeChart({
           name: "Battery SOC",
           data: points.map((point) => ({ x: point.time, y: point.soc })),
         },
-        {
-          name: "Reserve",
-          data: points.map((point) => ({ x: point.time, y: reservePercent })),
-        },
       ];
 
       const isBattery = mode === "Battery";
@@ -87,13 +81,12 @@ export default function OverviewTimeChart({
         },
         series: isBattery ? batterySeries : powerSeries,
         colors: isBattery
-          ? [COLORS.batt, "rgba(255,255,255,0.38)"]
+          ? [COLORS.batt]
           : [COLORS.pv, COLORS.load],
         dataLabels: { enabled: false },
         stroke: {
           curve: "smooth",
-          width: isBattery ? [2.5, 1.5] : [2.5, 2],
-          dashArray: isBattery ? [0, 5] : [0, 0],
+          width: isBattery ? [2.5] : [2.5, 2],
         },
         fill: {
           type: "gradient",
@@ -165,11 +158,9 @@ export default function OverviewTimeChart({
           intersect: false,
           x: { format: "HH:mm" },
           y: {
-            formatter: (value: number, context) => {
+            formatter: (value: number) => {
               if (isBattery) {
-                return context?.seriesIndex === 1
-                  ? `${Math.round(value)}% reserve`
-                  : `${Math.round(value)}% SOC`;
+                return `${Math.round(value)}% SOC`;
               }
               return value >= 1000
                 ? `${(value / 1000).toFixed(2)} kW`
@@ -197,7 +188,7 @@ export default function OverviewTimeChart({
       chartInstance.current?.destroy();
       chartInstance.current = null;
     };
-  }, [data, mode, reservePercent]);
+  }, [data, mode]);
 
   return <div className="min-h-[230px] w-full" ref={chartElement} />;
 }

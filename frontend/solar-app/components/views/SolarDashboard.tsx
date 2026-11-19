@@ -80,7 +80,6 @@ export default function Dashboard() {
   const solar_battery_consumption_percent = today_consumption_kwh ? (solar_battery_consumption / today_consumption_kwh) * 100 : 0;
   const grid_consumption_percent = today_consumption_kwh ? (today_buy_kwh / today_consumption_kwh) * 100 : 0;
   const solarUsagePercent = Math.min(100, Math.max(0, solar_battery_consumption_percent));
-  const reservePercent = data?.battery_reserve_percent ?? 20;
   const selfPowered = selfPoweredBaseline(dailyData);
 
   return (
@@ -210,7 +209,6 @@ export default function Dashboard() {
               <OverviewTimeChart
                 data={historyData ?? []}
                 mode={powerTab}
-                reservePercent={reservePercent}
               />
             </div>
           </Card>

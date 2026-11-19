@@ -31,7 +31,7 @@ function BatteryTonight({ plan }: { plan: BatteryPlan }) {
           <i className="fa-solid fa-battery-three-quarters mr-1.5 text-batt" />
           Battery tonight · {Math.round(plan.socPct)}%
         </span>
-        <span className="tabular-nums text-zinc-200">{fmtNum(plan.usableKwh, 1)} kWh usable</span>
+        <span className="tabular-nums text-zinc-200">{fmtNum(plan.usableKwh, 1)} kWh above {plan.reservePct}%</span>
       </div>
 
       <div className={`relative mt-2 ${needPct != null ? "mb-5" : ""}`}>

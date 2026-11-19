@@ -1,9 +1,7 @@
-"""AI assistant: the home's data snapshot, the lookup tools and user-confirmed actions."""
+"""AI assistant: the home's data snapshot, read-only lookup tools."""
 
 from __future__ import annotations
 
-import json
-import os
 from datetime import date, datetime
 from typing import Any, Awaitable, Callable, cast
 
@@ -15,8 +13,6 @@ from providers import report as report_mod
 from providers.base import VN_TZ
 
 
-RESERVE_MIN_PCT = 10
-RESERVE_MAX_PCT = 80
 MAX_RANGE_DAYS = 190
 
 
@@ -65,7 +61,6 @@ def build_context(runtime: AppRuntime) -> dict[str, Any]:
         "system": {
             "pv_kwp": runtime.config.get("capacity_kw"),
             "battery_kwh": latest.get("battery_capacity_kwh"),
-            "battery_reserve_pct": runtime.config.get("battery_reserve_percent"),
             "location": "Ho Chi Minh City",
             "tariff": "EVN tiered price rising with monthly usage, plus 8% VAT",
         },
@@ -146,12 +141,8 @@ def _hourly_from_curve(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
 Tool = dict[str, Any]
 
 
-def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[str, Tool]:
-    """Function-calling registry: {name: {"decl": Gemini functionDeclaration, "fn": async(args) -> dict}}.
-
-    Every tool only reads data, except propose_action, which queues a suggestion that the
-    user must confirm in the UI (/api/action). The model can never change anything itself.
-    """
+def build_tools(runtime: AppRuntime) -> dict[str, Tool]:
+    """Function-calling registry: {name: {"decl": Gemini functionDeclaration, "fn": async(args) -> dict}}."""
     store = runtime.store
     provider = runtime.history_provider
 
@@ -239,20 +230,7 @@ def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[
         return {"hours": store.hourly_profile(30),
                 "note": "30-day average; pv/load/grid in W; grid > 0 buys, < 0 sells"}
 
-    async def propose_action(args: dict) -> dict:
-        kind = str(args.get("action") or "")
-        if kind != "set_reserve":
-            raise ValueError("only action=set_reserve is supported")
-        pct = int(float(args.get("reserve_pct") or 0))
-        if not RESERVE_MIN_PCT <= pct <= RESERVE_MAX_PCT:
-            raise ValueError(f"reserve_pct must be {RESERVE_MIN_PCT}..{RESERVE_MAX_PCT}")
-        current = float(runtime.config.get("battery_reserve_percent", 20))
-        action_sink.append({"kind": kind, "params": {"reserve_pct": pct}, "current": current,
-                            "reason": str(args.get("reason") or "")[:300]})
-        return {"ok": True, "queued_for_user_confirmation": True,
-                "current_reserve_pct": current, "proposed_reserve_pct": pct}
-
-    obj, string, integer, number = "object", "string", "integer", "number"
+    obj, string, integer = "object", "string", "integer"
     return {
         "get_day_detail": {"fn": get_day_detail, "decl": {
             "name": "get_day_detail",
@@ -282,40 +260,4 @@ def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[
             "name": "get_hourly_profile",
             "description": "Average 24-hour profile over 30 days (W generated/used/bought per hour), for questions about the best time to use power.",
             "parameters": {"type": obj, "properties": {}}}},
-        "propose_action": {"fn": propose_action, "decl": {
-            "name": "propose_action",
-            "description": f"SUGGEST a settings change for the user to confirm (never applied by you). Supported: action='set_reserve' changes the battery reserve (%) the dashboard uses in its estimates. Only call when the benefit is CLEAR, and explain why.",
-            "parameters": {"type": obj, "properties": {
-                "action": {"type": string, "description": "set_reserve"},
-                "reserve_pct": {"type": number, "description": f"{RESERVE_MIN_PCT}..{RESERVE_MAX_PCT}"},
-                "reason": {"type": string, "description": "short reason, in the language of the chat"}},
-                "required": ["action", "reserve_pct", "reason"]}}},
     }
-
-
-def apply_action(runtime: AppRuntime, kind: str, params: dict[str, Any]) -> dict[str, Any]:
-    """Run an action the USER confirmed. Hard whitelist, bounded values.
-
-    set_reserve changes battery_reserve_percent for the dashboard's own estimates; it does
-    not write to the inverter. Persisted to config.json only when that file is the loaded one.
-    """
-    if kind != "set_reserve":
-        raise ValueError("unknown_action")
-    pct = int(float(params.get("reserve_pct") or 0))
-    if not RESERVE_MIN_PCT <= pct <= RESERVE_MAX_PCT:
-        raise ValueError("out_of_range")
-    old = float(runtime.config.get("battery_reserve_percent", 20))
-
-    path = runtime.root / "config.json"
-    if runtime.config.get("_file") == "config.json" and path.exists():
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        raw["battery_reserve_percent"] = pct
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, path)
-    runtime.config["battery_reserve_percent"] = pct
-    for provider in {id(p): p for p in (runtime.live_provider, runtime.history_provider)}.values():
-        if hasattr(provider, "battery_reserve_percent"):
-            setattr(provider, "battery_reserve_percent", float(pct))
-    print(f"  [action] set_reserve: {old} -> {pct}%", flush=True)
-    return {"ok": True, "kind": kind, "old": old, "new": pct}

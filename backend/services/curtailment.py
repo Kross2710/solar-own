@@ -55,7 +55,6 @@ async def curtail_for(provider: Provider, config: dict[str, Any], day: str) -> d
     points = (await fetch(day)).get("points") or []
     return estimate_curtailment(
         points,
-        reserve_pct=float(config.get("battery_reserve_percent", 20)),
         capacity_kw=config.get("capacity_kw"),
     )
 

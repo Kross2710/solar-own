@@ -56,7 +56,6 @@ export function useHouseScene(metrics: MetricsResponse): SceneData {
     tomorrowKwh: days.find((day) => !day.today)?.kwh ?? null,
     consKwh: metrics.today_consumption_kwh ?? null,
     buyKwh: metrics.today_buy_kwh ?? null,
-    reservePct: metrics.battery_reserve_percent ?? null,
     tier: tier ? { number: tier.index + 1, price: tier.cur_price } : null,
     battery: batteryOutlook(metrics, now),
   };
