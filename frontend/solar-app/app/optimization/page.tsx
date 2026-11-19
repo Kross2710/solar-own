@@ -54,7 +54,7 @@ export default function OptimizationPage() {
   if (!metrics && !forecast) return <PageUnavailable failed={Boolean(metricsError && forecastError)} />;
 
   return (
-    <DashboardPage status={metricsError || forecastError ? "error" : "online"} refreshing={metricsRefreshing || forecastRefreshing} updatedAt={metrics?.timestamp}>
+    <DashboardPage status={metricsError || forecastError ? "error" : "online"} refreshing={metricsRefreshing || forecastRefreshing}>
       <div className="grid gap-7 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-center">
         <TonightHero
           kind={kind}

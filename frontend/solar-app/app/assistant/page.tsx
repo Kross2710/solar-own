@@ -85,7 +85,7 @@ export default function AssistantPage() {
   if (!ai && !metrics) return <PageUnavailable failed={Boolean(aiError && metricsError)} />;
 
   return (
-    <DashboardPage status={metricsError || aiError ? "error" : "online"} refreshing={isValidating} updatedAt={metrics?.timestamp}>
+    <DashboardPage status={metricsError || aiError ? "error" : "online"} refreshing={isValidating}>
       {isClient && ai?.enabled ? (
         <ChatPanel metrics={metrics} notices={notices} onDismissNotice={dismiss} />
       ) : (

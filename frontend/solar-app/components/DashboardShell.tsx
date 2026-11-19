@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import UpdatedAgo from "@/components/overview/UpdatedAgo";
+import { useMetrics } from "@/hooks/useOptimization";
 import SettingsSheet from "@/components/settings/SettingsSheet";
 import { useNotices } from "@/hooks/useAssistant";
 
 import { useSectionTransition } from "@/hooks/useSectionTransition";
-import { PageStatusContext, type PageStatus } from "./DashboardPage";
 
 const NAV_ITEMS = [
     { href: "/", label: "Overview", icon: "fa-house" },
@@ -22,49 +21,35 @@ const pillClass =
     "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-[5px] text-[11px] font-semibold text-muted";
 
 const DOT_CLASS: Record<string, string> = {
-    online: "bg-good text-good/60 animate-[status-blink_2s_infinite]",
-    error: "bg-grid-in text-grid-in/55 animate-[status-blink_1.3s_infinite]",
-    updating: "bg-pv text-pv/50 animate-[status-blink_2.8s_infinite]",
-    connecting: "bg-pv text-pv/50 animate-[status-blink_2.8s_infinite]",
+    Online: "bg-good",
+    Offline: "bg-grid-in",
+    Unavailable: "bg-grid-in",
+    Connecting: "bg-pv",
 };
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const { mainRef, navigate } = useSectionTransition(pathname, NAV_ITEMS);
-    const [pageStatus, setPageStatus] = useState<PageStatus>();
-    const activeStatus = pageStatus?.pathname === pathname ? pageStatus : undefined;
-    const { status, source, updatedAt } = activeStatus ?? {};
+    const { data: metrics, error } = useMetrics();
+    let connection = "Connecting";
+    if (error || metrics?.status === "error") connection = "Unavailable";
+    else if (metrics?.status === "offline") connection = "Offline";
+    else if (metrics?.status === "online") connection = "Online";
     const [settingsOpen, setSettingsOpen] = useState(false);
     const { data: noticeData } = useNotices();
     // Only warnings earn a dot; info notices wait quietly on the Assistant tab.
     const hasWarning = (noticeData?.notices ?? []).some((notice) => notice.severity === "warn");
 
-    let title: ReactNode = "solar.home";
-    if (pathname === "/") {
-        title = (
-            <>
-                <span className="lg:hidden">
-                    solar<span className="text-zinc-500">.home</span>
-                </span>
-                <span className="hidden lg:inline">Overview</span>
-            </>
-        );
-    } else if (pathname.startsWith("/history")) {
-        title = "History";
-    } else if (pathname.startsWith("/money")) {
-        title = "Money";
-    } else if (pathname.startsWith("/optimization")) {
-        title = "Optimization";
-    } else if (pathname.startsWith("/assistant")) {
-        title = "Assistant";
-    }
+    const title = NAV_ITEMS.find(({ href }) =>
+        pathname === href || (href !== "/" && pathname.startsWith(href + "/"))
+    )?.label ?? "solar.home";
 
-    const statusPill = status ? (
-        <span className={pillClass}>
-            <span className={`inline-block size-1.5 rounded-full shadow-[0_0_6px_currentColor] motion-reduce:animate-none ${DOT_CLASS[status] ?? DOT_CLASS.online}`} />
-            {status}
+    const statusPill = (
+        <span className={pillClass} role="status">
+            <span aria-hidden="true" className={`inline-block size-1.5 rounded-full ${DOT_CLASS[connection]}`} />
+            <span className="sr-only">Inverter connection: </span>{connection}
         </span>
-    ) : null;
+    );
     const settingsButton = (
         <button
             className="inline-flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full text-[15px] text-dim transition-colors duration-200 hover:text-fg"
@@ -81,7 +66,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         <div className="min-h-screen w-full bg-ink text-fg lg:pl-[220px]">
             <div className="aurora" aria-hidden="true" />
 
-            {/* Desktop: navigation and connection status live in a fixed sidebar. */}
+            {/* Desktop navigation */}
             <aside className="fixed inset-y-0 left-0 z-40 hidden w-[220px] flex-col border-r border-white/[0.06] bg-ink/60 px-4 py-7 backdrop-blur-xl lg:flex">
                 <p className="px-3 text-sm font-bold">
                     solar<span className="text-zinc-500">.home</span>
@@ -108,16 +93,6 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                         );
                     })}
                 </nav>
-                <div className="mt-auto flex flex-col gap-2 px-1 text-[12px] text-muted">
-                    <div className="flex flex-wrap items-center gap-2">
-                        {statusPill}
-                        {source ? <span className={pillClass}>{source}</span> : null}
-                    </div>
-                    <div className="flex items-center justify-between pl-1">
-                        <UpdatedAgo iso={updatedAt} />
-                        {settingsButton}
-                    </div>
-                </div>
             </aside>
 
             {/* "app" is the zoom target for the large text modes in globals.css. */}
@@ -127,13 +102,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                         {title}
                     </h1>
 
-                    <div className="flex items-center gap-2 text-[13px] text-muted max-sm:justify-end max-[480px]:shrink-0 max-[480px]:gap-1.5 max-[480px]:text-[11px] lg:hidden">
+                    <div className="flex shrink-0 items-center gap-2">
                         {statusPill}
-
-                        <UpdatedAgo iso={updatedAt} />
-
-                        {source ? <span className={`${pillClass} max-[480px]:hidden`}>{source}</span> : null}
-
                         {settingsButton}
                     </div>
                 </header>
@@ -164,10 +134,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                     })}
                 </nav>
 
-                <main ref={mainRef} className="dashboard-content flex flex-col gap-7"><PageStatusContext.Provider value={setPageStatus}>{children}</PageStatusContext.Provider></main>
+                <main ref={mainRef} className="dashboard-content flex flex-col gap-7">{children}</main>
             </div>
 
-            <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+            <SettingsSheet updatedAt={metrics?.timestamp} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
     );
 }
