@@ -30,8 +30,11 @@ async def history(
 @router.get("/daily")
 async def daily(
     days: int = 30,
+    include_unused_solar: bool = False,
     runtime: AppRuntime = Depends(get_runtime),
 ) -> JSONResponse:
+    if include_unused_solar:
+        return JSONResponse(runtime.store.daily_full(days, include_unused_solar=True))
     return JSONResponse(runtime.store.daily_full(days))
 
 

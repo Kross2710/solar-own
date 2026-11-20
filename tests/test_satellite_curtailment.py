@@ -43,6 +43,17 @@ class SatelliteHistoryTests(TestCase):
             self.assertEqual(satellite_store.satellite_gains("2026-11-01", "2026-11-20"),
                              {"2026-11-19": 11.96})
 
+            satellite_store.backfill_daily(
+                {"2026-11-17": 20, "2026-11-18": 21, "2026-11-19": 22}, _today="2026-11-20"
+            )
+            legacy.record_curtailment("2026-11-17", 4.0, None)
+            satellite_store.record_curtailment("2026-11-18", 0, None)
+            self.assertEqual(
+                [row["lost_kwh"] for row in satellite_store.daily_full(include_unused_solar=True)],
+                [None, 0.0, 38.8],
+            )
+            self.assertNotIn("lost_kwh", satellite_store.daily_full()[0])
+
 
 class SatelliteBackfillTests(TestCase):
     def test_failed_day_is_retried_after_later_days_are_saved(self):
