@@ -139,6 +139,9 @@ async def backfill_satellite(runtime: AppRuntime) -> int:
             continue
         try:
             curve = await runtime.history_provider.fetch_day_curve(day)
+        except Exception as error:
+            print(f"  [curtailment] SEMS curve unavailable for {day}: {type(error).__name__}", flush=True)
+            continue
         finally:
             await asyncio.sleep(REQUEST_PAUSE_SECONDS)
         points = curve.get("points") or []

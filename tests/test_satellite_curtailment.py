@@ -42,3 +42,46 @@ class SatelliteHistoryTests(TestCase):
             self.assertEqual(legacy.curtailment_recent()[0]["lost"], 22.4)
             self.assertEqual(satellite_store.satellite_gains("2026-11-01", "2026-11-20"),
                              {"2026-11-19": 11.96})
+
+
+class SatelliteBackfillTests(TestCase):
+    def test_failed_day_is_retried_after_later_days_are_saved(self):
+        import asyncio
+        from datetime import datetime, timedelta
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, patch
+
+        from backend.services import curtailment
+        from providers.base import VN_TZ
+        from providers.history import HistoryStore
+
+        today = datetime.now(VN_TZ).date()
+        failed, later = ((today - timedelta(days=offset)).isoformat() for offset in (2, 1))
+        curve = {"points": [
+            dict(t=f"{minute // 60:02d}:{minute % 60:02d}",
+                 pv=900, load=900, batt=0, soc=100, grid=0)
+            for minute in range(365, 1081, 5)
+        ]}
+        radiation = {
+            f"{day}T{minute // 60:02d}:{minute % 60:02d}": 500
+            for day in (failed, later)
+            for minute in range(370, 1081, 10)
+        }
+        fetch = AsyncMock(side_effect=[RuntimeError("SEMS unavailable"), curve, curve])
+        with TemporaryDirectory() as directory:
+            store = HistoryStore(Path(directory) / "history.db", satellite_curtailment=True)
+            store.backfill_daily({failed: 20, later: 20}, _today=today.isoformat())
+            for offset in (4, 3):
+                store.record_satellite_gain((today - timedelta(days=offset)).isoformat(), 10)
+            runtime = SimpleNamespace(
+                config={"capacity_kw": 16}, latest={"lat": 10, "lon": 106},
+                history_provider=SimpleNamespace(fetch_day_curve=fetch), store=store,
+            )
+            with (patch.object(curtailment.satellite, "fetch_radiation", return_value=radiation),
+                  patch.object(curtailment, "REQUEST_PAUSE_SECONDS", 0)):
+                self.assertEqual(asyncio.run(curtailment.backfill_satellite(runtime)), 1)
+                self.assertEqual(store.curtailment_days(), {later})
+                self.assertEqual(asyncio.run(curtailment.backfill_satellite(runtime)), 1)
+                self.assertEqual(store.curtailment_days(), {failed, later})

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -617,14 +618,14 @@ class HistoryStore:
         return rows
 
     def satellite_gains(self, start: str, before: str) -> dict[str, float | None]:
-        with sqlite3.connect(self.path) as con:
+        with closing(sqlite3.connect(self.path)) as con:
             return dict(con.execute(
                 "SELECT day, gain FROM curtailment_satellite WHERE day >= ? AND day < ?",
                 (start, before),
             ))
 
     def record_satellite_gain(self, day: str, gain: float | None) -> None:
-        with sqlite3.connect(self.path) as con:
+        with closing(sqlite3.connect(self.path)) as con, con:
             con.execute(
                 "INSERT INTO curtailment_satellite(day, gain) VALUES (?,?) "
                 "ON CONFLICT(day) DO UPDATE SET gain=excluded.gain",
