@@ -25,7 +25,7 @@ import httpx
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
-_GEMINI_TIMEOUT = httpx.Timeout(20, connect=5)
+_GEMINI_TIMEOUT = httpx.Timeout(90, connect=5)
 _GEMINI_RETRY_STATUS = {500, 502, 503, 504}
 _GEMINI_FALLBACK_STATUS = _GEMINI_RETRY_STATUS | {404, 429}
 

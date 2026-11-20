@@ -22,16 +22,21 @@ export async function streamReply(history, update, lang, signal) {
   try {
     while (true) {
       const chunk=await reader.read();
-      if (chunk.done) break;
-      const parsed=parseSse((buffer+decoder.decode(chunk.value,{stream:true})).replaceAll("\r\n","\n"));
+      const decoded = chunk.done ? decoder.decode() : decoder.decode(chunk.value,{stream:true});
+      const tail = chunk.done ? "\n\n" : "";
+      const parsed=parseSse((buffer+decoded+tail).replaceAll("\r\n","\n"));
       buffer=parsed.rest;
       for(const event of parsed.events) {
         if(event.type==="delta"){reply+=event.text;status="";}
         if(event.type==="status") status=toolLabel(event.tool);
         if(event.type==="error") throw new Error(errorText(event.error_code));
-        if(event.type==="done" && reply) return reply;
+        if(event.type==="done") {
+          if (reply) return reply;
+          throw new Error(errorText());
+        }
         update(reply,status);
       }
+      if (chunk.done) break;
     }
     throw new Error("The reply did not finish. Please try again.");
   } finally {await reader.cancel().catch(()=>{});}
