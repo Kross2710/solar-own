@@ -59,14 +59,16 @@ export type CurtailmentResponse =
       supported: true;
       currency: string;
       marginal: number | null;
+      method?: "satellite" | "half_sine";
       today_grid_reduction_value: number | null;
       today: {
         lost_kwh: number | null;
         full_at: string | null; // "HH:MM" when the battery hit ~full
         actual_kwh: number | null;
         potential_kwh: number | null;
+        covered_minutes?: number | null;
       };
-      total30_kwh: number;
+      total30_kwh: number | null;
       days: number;
       recent: { day: string; lost_kwh: number }[];
     };
