@@ -1,4 +1,4 @@
-"""Assistant chat (SSE), user-confirmed actions and proactive notices."""
+"""Assistant chat (SSE), and proactive notices."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.runtime import AppRuntime, get_runtime
-from backend.services.assistant import apply_action, build_context, build_tools
+from backend.services.assistant import build_context, build_tools
 from backend.services.notices import active_notices
 from providers.base import VN_TZ
 
@@ -40,7 +40,7 @@ async def ai_status(runtime: AppRuntime = Depends(get_runtime)) -> JSONResponse:
 @router.post("/chat")
 async def chat(request: Request, runtime: AppRuntime = Depends(get_runtime)):
     """Multi-turn chat. Body {messages: [{role, content}], lang}. Streams SSE events:
-    status (a tool is being called), delta (text), error, done (with proposed actions)."""
+    status (a tool is being called), delta (text), error, done."""
     assistant = runtime.assistant
     if assistant is None or not assistant.chat_enabled:
         return JSONResponse({"enabled": False})
@@ -60,8 +60,7 @@ async def chat(request: Request, runtime: AppRuntime = Depends(get_runtime)):
     messages = messages[-MAX_MESSAGES:] if isinstance(messages, list) else []
     lang = "vi" if body.get("lang") == "vi" else "en"
 
-    actions: list[dict[str, Any]] = []
-    tools = build_tools(runtime, actions)
+    tools = build_tools(runtime)
     context = build_context(runtime)
 
     async def events() -> AsyncIterator[str]:
@@ -72,7 +71,7 @@ async def chat(request: Request, runtime: AppRuntime = Depends(get_runtime)):
             async with _chat_slots:
                 async for item in assistant.chat_stream(context, messages, lang=lang, tools=tools):
                     yield event(item)
-            yield event({"type": "done", "actions": actions})
+            yield event({"type": "done", "actions": []})
         except Exception as error:
             # Never send upstream details to the browser (they may include the request).
             print(f"  [chat] stream error: {type(error).__name__}: {error}", flush=True)
@@ -83,24 +82,6 @@ async def chat(request: Request, runtime: AppRuntime = Depends(get_runtime)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@router.post("/action")
-async def action(request: Request, runtime: AppRuntime = Depends(get_runtime)) -> JSONResponse:
-    """Apply an assistant suggestion after the user pressed "Apply". Body {kind, params}."""
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    body = body if isinstance(body, dict) else {}
-    params = body.get("params") if isinstance(body.get("params"), dict) else {}
-    try:
-        return JSONResponse(apply_action(runtime, str(body.get("kind") or ""), params))
-    except ValueError as error:
-        return JSONResponse({"ok": False, "error_code": str(error)}, status_code=400)
-    except Exception as error:
-        print(f"  [action] error: {type(error).__name__}: {error}", flush=True)
-        return JSONResponse({"ok": False, "error_code": "action_error"}, status_code=500)
 
 
 @router.get("/notices")

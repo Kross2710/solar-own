@@ -27,9 +27,6 @@ def build_provider(
             min_refresh_s=int(cloud.get("min_refresh_seconds", 60)),
             price_per_kwh=config.get("price_per_kwh"),
             currency=config.get("currency"),
-            battery_reserve_percent=float(
-                config.get("battery_reserve_percent", 20)
-            ),
         )
 
     if provider_source == "local":
@@ -43,9 +40,6 @@ def build_provider(
             capacity_kw=config.get("capacity_kw"),
             battery_capacity_kwh=local.get("battery_capacity_kwh")
             or config.get("battery_capacity_kwh"),
-            battery_reserve_percent=float(
-                config.get("battery_reserve_percent", 20)
-            ),
             battery_install_date=local.get("battery_install_date"),
             lat=local.get("lat"),
             lon=local.get("lon"),

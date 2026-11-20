@@ -10,7 +10,6 @@ class LocalGoodWeProvider(Provider):
     def __init__(self, host: str, port: int = 502, station_name: Optional[str] = None,
                  capacity_kw: Optional[float] = None,
                  battery_capacity_kwh: Optional[float] = None,
-                 battery_reserve_percent: Optional[float] = None,
                  battery_install_date: Optional[str] = None,
                  lat: Optional[float] = None, lon: Optional[float] = None):
         self.host = host
@@ -18,7 +17,6 @@ class LocalGoodWeProvider(Provider):
         self.station_name = station_name or "Home Solar"
         self.capacity_kw = capacity_kw
         self.battery_capacity_kwh = battery_capacity_kwh
-        self.battery_reserve_percent = battery_reserve_percent
         self.battery_install_date = battery_install_date
         self.lat = lat
         self.lon = lon
@@ -86,7 +84,6 @@ class LocalGoodWeProvider(Provider):
             meter_total_buy_kwh=re("meter_e_total_imp"),
             meter_total_sell_kwh=re("meter_e_total_exp"),
             battery_capacity_kwh=self.battery_capacity_kwh,
-            battery_reserve_percent=self.battery_reserve_percent,
             lat=self.lat,
             lon=self.lon,
         )
