@@ -22,8 +22,7 @@ def _mins(t: str) -> Optional[int]:
         return None
 
 
-def estimate_curtailment(points: list, reserve_pct: float = 20.0,
-                         capacity_kw: Optional[float] = None) -> dict:
+def estimate_curtailment(points: list, *, capacity_kw: Optional[float] = None) -> dict:
     """points: [{t,'pv','load','grid','soc',...}] (5 phút/điểm, W & %).
 
     Trả {lost_kwh, actual_kwh, potential_kwh, full_at, samples}.

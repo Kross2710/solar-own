@@ -64,7 +64,6 @@ async def status(runtime: AppRuntime = Depends(get_runtime)) -> JSONResponse:
             "updated_at": forecaster.updated_at if forecaster.ready else None,
         },
         "assistant": bool(runtime.assistant and runtime.assistant.chat_enabled),
-        "battery_reserve_percent": runtime.config.get("battery_reserve_percent", 20),
     })
 
 

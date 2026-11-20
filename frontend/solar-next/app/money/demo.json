@@ -1,0 +1,142 @@
+{
+  "currency": "VND",
+  "marginal_cons": 4152,
+  "marginal_buy": 3126,
+  "tariff": {
+    "label": "EVN residential \u00b7 5 tiers",
+    "effective_from": "2026-11-01",
+    "vat": 0.08,
+    "includes_vat": true,
+    "mixed": false,
+    "allocation": "single_tariff"
+  },
+  "tier": {
+    "index": 2,
+    "count": 5,
+    "level_kwh": 251,
+    "cur_price": 3126,
+    "to_next_kwh": 149.0,
+    "next_jump": 607,
+    "bounds": [
+      100,
+      200,
+      400,
+      700,
+      null
+    ],
+    "prices": [
+      2053,
+      2472,
+      3126,
+      3732,
+      4152
+    ]
+  },
+  "projected_tier": {
+    "index": 2,
+    "count": 5,
+    "level_kwh": 396.3,
+    "cur_price": 3126,
+    "to_next_kwh": 3.7,
+    "next_jump": 607,
+    "bounds": [
+      100,
+      200,
+      400,
+      700,
+      null
+    ],
+    "prices": [
+      2053,
+      2472,
+      3126,
+      3732,
+      4152
+    ]
+  },
+  "prev_cycle": {
+    "start": "2026-10-01",
+    "days": 19,
+    "has": true,
+    "buy_kwh": 245,
+    "bill": 620579,
+    "buy_delta_pct": 2,
+    "bill_delta": -8657
+  },
+  "today": {
+    "saved": 99636,
+    "selfuse_kwh": 24
+  },
+  "cycle": {
+    "start": "2026-11-01",
+    "end": "2026-12-01",
+    "days_elapsed": 19,
+    "days_in_cycle": 30,
+    "buy_kwh": 251,
+    "cons_kwh": 759,
+    "bill_now": 611922,
+    "saved_now": 1830386,
+    "proj_buy_kwh": 396,
+    "proj_cons_kwh": 1198,
+    "bill_proj": 1066109,
+    "without_solar_proj": 4266573,
+    "saved_proj": 3200464,
+    "bill_proj_lo": null,
+    "bill_proj_hi": null,
+    "proj_method": "flat"
+  },
+  "total": {
+    "saved": 4939404,
+    "months": 2
+  },
+  "payback": {
+    "scenarios": [
+      {
+        "method": "completed_months_at_current_tariff",
+        "monthly_savings": 3328353,
+        "eta": "2029-02-19"
+      },
+      {
+        "method": "current_cycle_pace",
+        "monthly_savings": 3200464,
+        "eta": "2029-03-24"
+      }
+    ],
+    "scenario_note": "Current tariff/VAT held fixed; excludes future maintenance and equipment replacement. Scenarios are not a confidence interval.",
+    "invest": 95000000,
+    "recovered": 4939404,
+    "remaining": 90060596,
+    "pct": 5.2,
+    "avg_month": 3109018,
+    "months_left": 29.0,
+    "eta": "2029-04-18",
+    "commissioned": "2026-10-01",
+    "data_months": 2,
+    "low_confidence": true,
+    "done": false
+  },
+  "evn_bill": {
+    "cycle": "2026-10",
+    "amount": 1093000,
+    "kwh": 403,
+    "paid_date": "2026-11-05"
+  },
+  "evn_history": [
+    {
+      "cycle": "2026-07",
+      "amount": 2312000
+    },
+    {
+      "cycle": "2026-08",
+      "amount": 2131000
+    },
+    {
+      "cycle": "2026-09",
+      "amount": 1938000
+    },
+    {
+      "cycle": "2026-10",
+      "amount": 1093000
+    }
+  ]
+}

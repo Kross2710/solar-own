@@ -1,0 +1,16 @@
+.money{--savings:#aed9a3}
+.money .heading p,.money small,.money .ledger p{color:var(--muted)}
+.money .heading p,.money small{font-size:13px}
+.money .statement{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:center;background:linear-gradient(110deg,#233328,var(--panel) 72%);border-color:#495a48}
+.money .saved{font-size:clamp(32px,5.8vw,65px);color:var(--savings)}
+.money .compare>div:not(.bill-track){display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.money .compare span{font-size:13px;color:var(--muted)}
+.money .bill-track{height:9px;background:var(--savings);border-radius:4px;margin:12px 0;overflow:hidden}
+.money .bill-track i{display:block;height:100%;background:var(--grid)}
+.money-stats{display:grid;grid-template-columns:repeat(3,1fr);margin:22px 0 28px;border-block:1px solid var(--edge)}
+.money-stats section{padding:16px 0}.money-stats h2{font-size:15px;letter-spacing:0;font-weight:500}.money-stats strong,.money .ledger strong{font-size:clamp(21px,3vw,32px)}
+.money-columns{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;align-items:start}.money-stack{display:grid;gap:14px}
+.money .ledger p{margin:6px 0 10px}.money .ledger small{display:block}.money table{border-collapse:collapse;width:100%;margin:15px 0}.money table caption{text-align:left;font-size:12px;color:var(--muted);padding-bottom:6px}
+.money th,.money td{border-bottom:1px solid var(--edge);text-align:right;padding:8px 4px}.money th{font-size:12px;color:var(--muted)}.money th:first-child,.money td:first-child{text-align:left}.money .current-tier{color:var(--sun)}
+.money details{margin-top:16px;border-top:1px solid var(--edge);padding-top:12px}.money summary{cursor:pointer;color:var(--grid);padding:4px 0}.money dl{margin-bottom:0}.money dl div{display:flex;justify-content:space-between;padding:6px 0}.money dd{margin:0}.money .payback{margin-top:14px}.money progress{width:100%;height:8px;accent-color:var(--savings);margin:6px 0 8px}
+@media(max-width:700px){.money .statement,.money-columns{grid-template-columns:1fr}.money .statement{gap:22px}.money-stats{grid-template-columns:1fr}.money-stats section{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:4px 12px;padding:12px 0}.money-stats section+section{border-top:1px solid var(--edge)}.money-stats strong{margin:0}.money-stats small{grid-column:1/-1}}

@@ -43,7 +43,6 @@ class Metrics:
     month_income: Optional[float] = None         # Saving this month
     total_income: Optional[float] = None         # Total saving since installation
     battery_capacity_kwh: Optional[float] = None  
-    battery_reserve_percent: Optional[float] = None  
     
     lat: Optional[float] = None  # Latitude of the station, if available
     lon: Optional[float] = None # Longitude of the station, if available
