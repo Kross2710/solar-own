@@ -19,6 +19,10 @@ export default async function Optimization({searchParams}) {
   const demo = (await searchParams).demo === "1";
   const [metrics,forecast,hourly,curtailment,money] = demo ? demoData :
     await Promise.all(["metrics","forecast","hourly","curtailment","money"].map(read));
+  const satelliteEstimate = curtailment?.method === "satellite";
+  const wastedToday = curtailment?.today?.lost_kwh;
+  const wastedTotal = curtailment?.total30_kwh;
+  const coveredMinutes = curtailment?.today?.covered_minutes ?? 0;
   const days = forecast?.ready ? forecast.days : [];
   const tomorrow = tomorrowOf(days);
   const kind = dayKind(tomorrow?.qual,tomorrow?.kwh,forecast?.avg30_kwh);
@@ -59,8 +63,20 @@ export default async function Optimization({searchParams}) {
       [t("Model"),forecast.model],[t("Training days"),forecast.quality?.n_train],
       ["MAE",fmtNum(forecast.quality?.mae)+" kWh"],["RMSE",fmtNum(forecast.quality?.rmse)+" kWh"]
     ]}/>}
-    {curtailment?.supported && <section className="panel unused"><div><h2><i aria-hidden="true">↘</i>{t(" Unused solar")}</h2><small>{t("Estimated today")}</small></div><strong>{fmtNum(curtailment.today?.lost_kwh)} <small>kWh</small></strong>
-      <details><summary>{t("Recent total")}</summary><p>{fmtNum(curtailment.total30_kwh)}{t(" kWh over ")}{curtailment.days}{t(" recorded days")}</p></details></section>}</>}
+    {curtailment?.supported && <section className="panel unused">
+      <div>
+        <h2><i aria-hidden="true">↘</i>{t(" Unused solar")}</h2>
+        <small>{t(satelliteEstimate ? "Satellite estimate today" : "Estimated today")}</small>
+      </div>
+      <strong>{wastedToday == null ? t("Unavailable") : <>{fmtNum(wastedToday)} <small>kWh</small></>}</strong>
+      {satelliteEstimate && wastedToday != null && coveredMinutes < 720 &&
+        <small>{fmtNum(coveredMinutes)} {t("of 720 daylight minutes covered")}</small>}
+      <details>
+        <summary>{t(satelliteEstimate ? "Past 30 completed days" : "Recent total")}</summary>
+        <p>{wastedTotal == null ? t("Unavailable") :
+          <>{fmtNum(wastedTotal)}{t(" kWh over ")}{curtailment.days}{t(" recorded days")}</>}</p>
+      </details>
+    </section>}</>}
 
   </main>;
 }

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -15,8 +16,9 @@ from providers.base import VN_TZ
 
 
 class HistoryStore:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, satellite_curtailment: bool = False):
         self.path = str(path)
+        self._curtailment_table = "curtailment_satellite" if satellite_curtailment else "curtailment"
         con = sqlite3.connect(self.path)
         # WAL: người đọc (frontend polling samples) không chặn người ghi
         # (poll_loop ghi mỗi 10s) -> web API vẫn nhanh dưới tải. journal_mode là
@@ -49,6 +51,12 @@ class HistoryStore:
                  full_at TEXT
                )"""
         )
+        if satellite_curtailment:
+            con.execute(
+                """CREATE TABLE IF NOT EXISTS curtailment_satellite(
+                     day TEXT PRIMARY KEY, lost REAL, full_at TEXT, gain REAL
+                   )"""
+            )
         # Sức khoẻ pin theo ngày (cho biểu đồ xu hướng SOH/throughput dài hạn). KHÔNG prune —
         # vài trăm dòng rất nhẹ. soh = giá trị MỚI NHẤT trong ngày (đổi rất chậm); charge/discharge
         # là throughput LŨY KẾ ĐỜI PIN (đơn điệu tăng) -> dùng MAX để không bao giờ tụt.
@@ -583,7 +591,7 @@ class HistoryStore:
     def record_curtailment(self, day: str, lost: float, full_at) -> None:
         con = sqlite3.connect(self.path)
         con.execute(
-            "INSERT INTO curtailment(day, lost, full_at) VALUES (?,?,?) "
+            f"INSERT INTO {self._curtailment_table}(day, lost, full_at) VALUES (?,?,?) "
             "ON CONFLICT(day) DO UPDATE SET lost=excluded.lost, full_at=excluded.full_at",
             (str(day)[:10], float(lost or 0.0), full_at),
         )
@@ -592,7 +600,7 @@ class HistoryStore:
 
     def curtailment_days(self) -> set:
         con = sqlite3.connect(self.path)
-        rows = con.execute("SELECT day FROM curtailment").fetchall()
+        rows = con.execute(f"SELECT day FROM {self._curtailment_table} WHERE lost IS NOT NULL").fetchall()
         con.close()
         return {r[0] for r in rows}
 
@@ -600,13 +608,29 @@ class HistoryStore:
         con = sqlite3.connect(self.path)
         con.row_factory = sqlite3.Row
         cur = con.execute(
-            "SELECT day, lost, full_at FROM curtailment ORDER BY day DESC LIMIT ?",
+            f"SELECT day, lost, full_at FROM {self._curtailment_table} "
+            "WHERE lost IS NOT NULL ORDER BY day DESC LIMIT ?",
             (max(1, days),),
         )
         rows = [dict(r) for r in cur.fetchall()]
         con.close()
         rows.reverse()
         return rows
+
+    def satellite_gains(self, start: str, before: str) -> dict[str, float | None]:
+        with closing(sqlite3.connect(self.path)) as con:
+            return dict(con.execute(
+                "SELECT day, gain FROM curtailment_satellite WHERE day >= ? AND day < ?",
+                (start, before),
+            ))
+
+    def record_satellite_gain(self, day: str, gain: float | None) -> None:
+        with closing(sqlite3.connect(self.path)) as con, con:
+            con.execute(
+                "INSERT INTO curtailment_satellite(day, gain) VALUES (?,?) "
+                "ON CONFLICT(day) DO UPDATE SET gain=excluded.gain",
+                (day, gain),
+            )
 
     # ---------- notices ----------
     def notice_add(self, kind: str, dkey: str, severity: str, data: dict, expires: str) -> bool:

@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Awaitable, Callable, cast
 
 from backend.runtime import AppRuntime
-from backend.services.curtailment import backfill_curtailment
+from backend.services.curtailment import backfill_curtailment, backfill_satellite
 from providers.base import VN_TZ
 
 
@@ -119,7 +119,8 @@ async def sync_once(runtime: AppRuntime) -> dict[str, Any]:
 
         written = await step(
             "curtailment",
-            lambda: backfill_curtailment(runtime.store, runtime.history_provider, runtime.config),
+            lambda: backfill_satellite(runtime) if getattr(runtime.history_provider, "name", None) == "cloud"
+            else backfill_curtailment(runtime.store, runtime.history_provider, runtime.config),
         )
         result["curtailment_days"] = written or 0
         if written:

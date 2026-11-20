@@ -30,6 +30,8 @@ class AppRuntime:
     latest: dict[str, Any] | None = None
     live_fallback_on: bool = False
     forecaster: SolarForecaster = field(default_factory=SolarForecaster)
+    satellite_today: tuple[str, float, dict[str, float | None]] | None = None
+    satellite_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     accuracy_init_task: asyncio.Task[Any] | None = None
     # Weather fetch + training must not overlap (loop vs. first /api/forecast request).
     forecast_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
@@ -73,7 +75,7 @@ def create_runtime(
         live_provider=live_provider,
         history_provider=history_provider,
         poll_interval=poll_interval,
-        store=HistoryStore(root / "history.db"),
+        store=HistoryStore(root / "history.db", satellite_curtailment=history_provider.name == "cloud"),
         tariff=EvnTariff.from_config(app_config.get("evn")),
         assistant=Assistant(app_config.get("ai")),
     )
