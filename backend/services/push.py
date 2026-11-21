@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import base64
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 import hashlib
 import json
 import logging
@@ -21,6 +23,10 @@ OUTAGE_SECONDS = 600
 BATTERY_FLOOR = 20
 BATTERY_REARM = 22
 TEST_INTERVAL = 60
+ALERT_TTL = 900
+RETRY_DELAYS = (15, 60, 180)
+DELIVERY_LEASE = 60
+DELIVERY_BATCH = 8
 MESSAGES = {
     "low-battery": (
         "The battery reached its 20% reserve.",
@@ -39,6 +45,31 @@ MESSAGES = {
         "Thiết bị này có thể nhận cảnh báo từ Home Solar.",
     ),
 }
+
+
+@dataclass(frozen=True)
+class PushResult:
+    status: int
+    retry_after: float = 0
+
+    @property
+    def retryable(self) -> bool:
+        return self.status in (408, 429) or 500 <= self.status < 600
+
+
+def retry_after_seconds(value: str) -> float:
+    try:
+        return min(ALERT_TTL, max(0, int(value)))
+    except ValueError:
+        try:
+            date = parsedate_to_datetime(value)
+            return max(0, date.timestamp() - time.time()) if date.tzinfo else 0
+        except (ValueError, OverflowError):
+            return 0
+
+
+def alert_topic(event: str) -> str:
+    return "inverter" if event.startswith("inverter-") else event
 
 
 def supported_endpoint(endpoint: str) -> bool:
@@ -86,6 +117,14 @@ class PushAlerts:
                     offline INTEGER NOT NULL, battery_low INTEGER NOT NULL
                 );
                 INSERT OR IGNORE INTO alert_state VALUES (1, 0, 0);
+                CREATE TABLE IF NOT EXISTS pending_push (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token_hash TEXT NOT NULL REFERENCES devices(token_hash) ON DELETE CASCADE,
+                    topic TEXT NOT NULL, event TEXT NOT NULL,
+                    expires_at REAL NOT NULL, ready_at REAL NOT NULL,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(token_hash, topic)
+                );
             """)
 
     @contextmanager
@@ -93,6 +132,7 @@ class PushAlerts:
         database = sqlite3.connect(self.database)
         database.row_factory = sqlite3.Row
         try:
+            database.execute("PRAGMA foreign_keys = ON")
             with database:
                 yield database
         finally:
@@ -152,6 +192,7 @@ class PushAlerts:
 
     def transitions(self, now: float) -> list[str]:
         events = []
+        previous_battery = self.previous_battery
         with self.connection() as database:
             database.execute("BEGIN IMMEDIATE")
             state = database.execute("SELECT offline, battery_low FROM alert_state WHERE id = 1").fetchone()
@@ -171,11 +212,10 @@ class PushAlerts:
                 if soc is not None and 0 <= soc <= 100:
                     if soc >= BATTERY_REARM:
                         battery_low = False
-                    previous = self.previous_battery
                     stopped_at_floor = (
-                        power == 0 and previous is not None
-                        and 0 < last_good_at - previous[0] < OUTAGE_SECONDS
-                        and previous[1] > BATTERY_FLOOR and previous[2] < 0
+                        power == 0 and previous_battery is not None
+                        and 0 < last_good_at - previous_battery[0] < OUTAGE_SECONDS
+                        and previous_battery[1] > BATTERY_FLOOR and previous_battery[2] < 0
                     )
                     if not battery_low and soc <= BATTERY_FLOOR and (
                         (power is not None and power < 0) or stopped_at_floor
@@ -183,30 +223,74 @@ class PushAlerts:
                         events.append("low-battery")
                         battery_low = True
                     if power is not None:
-                        self.previous_battery = (last_good_at, soc, power)
+                        previous_battery = (last_good_at, soc, power)
 
             if offline != was_offline or battery_low != bool(state["battery_low"]):
                 database.execute("UPDATE alert_state SET offline = ?, battery_low = ? WHERE id = 1", (offline, battery_low))
+            if state["battery_low"] and not battery_low:
+                database.execute("DELETE FROM pending_push WHERE topic = 'low-battery'")
+            # Commit each alert and its deliveries together so a restart cannot lose it.
+            for event in events:
+                database.execute("""
+                    INSERT OR REPLACE INTO pending_push (token_hash, topic, event, expires_at, ready_at)
+                    SELECT token_hash, ?, ?, ?, ? FROM devices
+                """, (alert_topic(event), event, now + ALERT_TTL, now))
 
+        self.previous_battery = previous_battery
         return events
+
+    def claim_deliveries(self, now: float) -> list[sqlite3.Row]:
+        with self.connection() as database:
+            database.execute("BEGIN IMMEDIATE")
+            database.execute("""
+                DELETE FROM pending_push
+                WHERE expires_at <= ? OR (ready_at <= ? AND attempts > ?)
+            """, (now, now, len(RETRY_DELAYS)))
+            deliveries = database.execute("""
+                SELECT d.*, p.id, p.event, p.topic, p.expires_at, p.attempts + 1 AS attempt
+                FROM pending_push p JOIN devices d USING (token_hash)
+                WHERE p.ready_at <= ?
+                ORDER BY p.ready_at, p.id LIMIT ?
+            """, (now, DELIVERY_BATCH)).fetchall()
+            database.executemany("""
+                UPDATE pending_push SET attempts = ?, ready_at = ? WHERE id = ?
+            """, [(job["attempt"], now + DELIVERY_LEASE, job["id"]) for job in deliveries])
+            return deliveries
+
+    async def deliver(self, job: sqlite3.Row) -> None:
+        attempt = job["attempt"]
+        retry_at = None
+        ttl = int(job["expires_at"] - time.time())
+        if ttl > 0:
+            result = await self.send(job, job["event"], ttl=ttl, topic=job["topic"])
+            if result.retryable and attempt <= len(RETRY_DELAYS):
+                retry_at = time.time() + max(RETRY_DELAYS[attempt - 1], result.retry_after)
+        with self.connection() as database:
+            if retry_at is not None and retry_at < job["expires_at"]:
+                database.execute(
+                    "UPDATE pending_push SET ready_at = ? WHERE id = ? AND attempts = ?",
+                    (retry_at, job["id"], attempt),
+                )
+            else:
+                database.execute("DELETE FROM pending_push WHERE id = ? AND attempts = ?", (job["id"], attempt))
+
+    async def dispatch(self) -> None:
+        deliveries = self.claim_deliveries(time.time())
+        await asyncio.gather(*(self.deliver(job) for job in deliveries))
 
     async def run(self) -> None:
         while True:
             try:
-                for event in self.transitions(time.time()):
-                    with self.connection() as database:
-                        devices = database.execute("SELECT * FROM devices").fetchall()
-                    # Bound concurrent egress without tying up telemetry collection.
-                    for start in range(0, len(devices), 8):
-                        await asyncio.gather(*(self.send(device, event) for device in devices[start:start + 8]))
+                self.transitions(time.time())
+                await self.dispatch()
             except Exception:
                 logger.exception("Home Solar alert processing failed")
             await asyncio.sleep(5)
 
-    async def send(self, device, event: str) -> int:
-        return await asyncio.to_thread(self._send, device, event)
+    async def send(self, device: sqlite3.Row, event: str, *, ttl: int = 300, topic: str | None = None) -> PushResult:
+        return await asyncio.to_thread(self._send, device, event, ttl, topic)
 
-    def _send(self, device, event: str) -> int:
+    def _send(self, device: sqlite3.Row, event: str, ttl: int, topic: str | None) -> PushResult:
         from pywebpush import WebPushException, webpush
         from requests import RequestException, Session
 
@@ -216,11 +300,11 @@ class PushAlerts:
 
         subscription = json.loads(device["subscription"])
         if not supported_endpoint(subscription["endpoint"]):
-            return 502
+            return PushResult(400)
 
         body = MESSAGES[event][device["language"] == "vi"]
         data = json.dumps({
-            "title": "Home Solar", "body": body, "tag": event,
+            "title": "Home Solar", "body": body, "tag": topic or event,
             "path": "/settings" if event == "test" else "/",
         })
         try:
@@ -228,19 +312,31 @@ class PushAlerts:
                 response = webpush(
                     subscription, data,
                     vapid_private_key=self.vapid, vapid_claims={"sub": self.contact},
-                    ttl=300 if event == "test" else 900, timeout=8, requests_session=session,
+                    ttl=ttl, timeout=8, requests_session=session,
+                    headers={"Topic": topic} if topic else None,
                 )
-            return 204 if 200 <= response.status_code < 300 else 502
         except WebPushException as error:
-            status = error.response.status_code if error.response is not None else None
-            if status in (404, 410):
-                with self.connection() as database:
-                    database.execute(
-                        "DELETE FROM devices WHERE token_hash = ? AND subscription = ?",
-                        (device["token_hash"], device["subscription"]),
-                    )
-                return 410
-            logger.warning("Web Push service rejected %s (status %s)", event, status)
-        except (RequestException, ValueError) as error:
-            logger.warning("Web Push delivery failed for %s (%s)", event, type(error).__name__)
-        return 502
+            response = error.response
+            if response is None:
+                logger.warning("Could not package Web Push message for %s", event)
+                return PushResult(400)
+        except RequestException as error:
+            logger.warning("Web Push request failed for %s (%s)", event, type(error).__name__)
+            return PushResult(503)
+        except ValueError:
+            logger.warning("Invalid Web Push data for %s", event)
+            return PushResult(400)
+
+        status = response.status_code
+        if 200 <= status < 300:
+            return PushResult(204)
+        if status in (404, 410):
+            with self.connection() as database:
+                database.execute(
+                    "DELETE FROM devices WHERE token_hash = ? AND subscription = ?",
+                    (device["token_hash"], device["subscription"]),
+                )
+            return PushResult(410)
+
+        logger.warning("Web Push service rejected %s (status %s)", event, status)
+        return PushResult(status, retry_after_seconds(response.headers.get("Retry-After", "")))

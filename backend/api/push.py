@@ -117,5 +117,6 @@ async def test_device(runtime: Runtime, token: Token) -> Response:
     if device is None:
         headers = {"Retry-After": str(TEST_INTERVAL)} if status == 429 else None
         raise HTTPException(status, headers=headers)
-    status = await alerts.send(device, "test")
+    result = await alerts.send(device, "test")
+    status = result.status if result.status in (204, 410) else 502
     return Response(status_code=status)

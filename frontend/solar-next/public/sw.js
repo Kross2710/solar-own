@@ -20,7 +20,18 @@ self.addEventListener("notificationclick", event => {
   event.notification.close();
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const existing = windows.find(client => client.url === target);
-    return existing ? existing.focus() : self.clients.openWindow(target);
+    const appWindows = windows.filter(client =>
+      client.frameType !== "nested" && new URL(client.url).origin === self.location.origin
+    );
+    const existing = appWindows.find(client => client.url === target) ?? appWindows[0];
+    if (existing) {
+      try {
+        await existing.focus();
+        if (existing.url === target || await existing.navigate(target)) return;
+      } catch {
+        // The window may have closed, or WebKit may reject navigation.
+      }
+    }
+    await self.clients.openWindow(target);
   })());
 });
