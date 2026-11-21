@@ -6,6 +6,7 @@ import {examples} from "./replies";
 import {useConversation} from "./useConversation";
 import Refresh from "../shared/Refresh";
 import Composer from "./Composer";
+import NavIcon from "../shared/NavIcon";
 
 function CopyReply({text}) {
   const {t}=usePreferences();
@@ -78,10 +79,10 @@ export default function Conversation({demo,enabled,notices,soc}) {
     <Notices demo={demo} notices={notices} ask={enabled && thread && !stream ? send : null}/>
     {enabled ? <section className="ask-room" aria-label={t("Solar chat")}>
       <div className="ask-log" ref={log} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<48;}}>
-        {empty && <div className="ask-welcome"><div className="ask-orbit" aria-hidden="true">☀</div>
+        {empty && <div className="ask-welcome"><div className="ask-orbit"><NavIcon name="sun"/></div>
           <h2>{t("What would you like to know?")}</h2>
           <div className="ask-starters">{examples.map(([q],i)=><button key={q} disabled={!thread} onClick={()=>send(t(q))}>
-            <span aria-hidden="true">{i===0?"◷":"ϟ"}</span>{t(q)}<i aria-hidden="true">↗</i></button>)}</div></div>}
+            <NavIcon name={i===0?"clock":"bolt"}/>{t(q)}</button>)}</div></div>}
         {entries && <Transcript entries={entries}/>}
         {stream && <article className="ask-msg assistant"><small>{t("Assistant")}</small>
           {stream.text && <p>{stream.text}</p>}{stream.status && <div className="ask-status" role="status">{t(stream.status)}</div>}</article>}
