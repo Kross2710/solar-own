@@ -33,6 +33,7 @@ export default function PushSettings() {
   const {t, lang} = usePreferences();
   const [setup, setSetup] = useState({status: "Loading notification settings…"});
   const [active, setActive] = useState(false);
+  const [setupRevision, setSetupRevision] = useState(0);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -59,23 +60,27 @@ export default function PushSettings() {
       await navigator.serviceWorker.register("/sw.js");
       const worker = await navigator.serviceWorker.ready;
       const key = applicationKey(config.publicKey);
-      let subscription = await worker.pushManager.getSubscription();
+      const subscription = await worker.pushManager.getSubscription();
       const token = localStorage.getItem(DEVICE_KEY);
-      if (subscription) {
+      const device = token ? await request("/device", {token, signal}) : null;
+      if (signal.aborted) return null;
+
+      if (subscription && device?.endpoint === subscription.endpoint) {
         const currentKey = new Uint8Array(subscription.options.applicationServerKey ?? []);
-        if (currentKey.length !== key.length || !key.every((byte, index) => byte === currentKey[index])) {
-          await subscription.unsubscribe();
-          subscription = null;
-        }
-      }
-      if (token) {
-        const device = await request("/device", {token, signal});
-        if (device.endpoint && device.endpoint === subscription?.endpoint) {
+        const keyMatches = currentKey.length === key.length && key.every((byte, index) => byte === currentKey[index]);
+        const expired = subscription.expirationTime != null && subscription.expirationTime <= Date.now();
+        if (keyMatches && !expired) {
           if (device.language !== lang) await request("/device", {method: "PATCH", token, signal, body: {language: lang}});
           return {worker, key, active: true};
         }
-        if (device.endpoint) await request("/device", {method: "DELETE", token, signal});
       }
+
+      // Clear orphaned subscriptions before showing the form, so subscribe()
+      // can create a new endpoint directly in the next iOS user gesture.
+      if (subscription && !await subscription.unsubscribe() && await worker.pushManager.getSubscription()) {
+        throw new Error("Could not clear the previous push subscription");
+      }
+      if (device?.endpoint) await request("/device", {method: "DELETE", token, signal});
       return {worker, key};
     }
 
@@ -88,7 +93,7 @@ export default function PushSettings() {
       if (!signal.aborted) setSetup({status: "Could not load notification settings. Reload to try again."});
     });
     return () => controller.abort();
-  }, [lang]);
+  }, [lang, setupRevision]);
 
   async function enable(event) {
     event.preventDefault();
@@ -147,9 +152,8 @@ export default function PushSettings() {
       if (error.status === 429) {
         setNotice("Wait up to one minute before sending another test.");
       } else if (error.status === 410 || error.status === 404) {
-        setActive(false);
-        const subscription = await setup.worker.pushManager.getSubscription().catch(() => null);
-        await subscription?.unsubscribe().catch(() => {});
+        setSetup({status: "Loading notification settings…"});
+        setSetupRevision(revision => revision + 1);
         setNotice("This subscription expired. Enable notifications again.");
       } else {
         setNotice("Could not send the test notification. Please try again.");
