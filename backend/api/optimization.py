@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from backend.runtime import AppRuntime, get_runtime
 from backend.services.curtailment import build_curtailment, marginal_price
+from backend.services.day_ahead import build_day_ahead
 from backend.services.forecast import build_forecast, build_accuracy
 
 
@@ -46,3 +47,7 @@ async def forecast_accuracy(
 ) -> JSONResponse:
     result = await build_accuracy(runtime, model)
     return JSONResponse(result, status_code=404 if result.get("reason") == "unknown_model" else 200)
+
+@router.get("/forecast/day-ahead")
+async def day_ahead(runtime: AppRuntime = Depends(get_runtime)) -> JSONResponse:
+    return JSONResponse(await build_day_ahead(runtime))
