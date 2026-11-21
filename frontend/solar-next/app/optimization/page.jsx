@@ -18,8 +18,8 @@ export default async function Optimization({searchParams}) {
   const t=translator(lang);
   const fmtNum=value=>formatNumber(value,lang);
   const demo = (await searchParams).demo === "1";
-  const [metrics,forecast,hourly,curtailment,money] = demo ? demoData :
-    await Promise.all(["metrics","forecast","hourly","curtailment","money"].map(read));
+  const [metrics,forecast,hourly,curtailment,money,dayAhead] = demo ? demoData :
+    await Promise.all(["metrics","forecast","hourly","curtailment","money","forecast/day-ahead"].map(read));
   const satelliteEstimate = curtailment?.method === "satellite";
   const wastedToday = curtailment?.today?.lost_kwh;
   const wastedTotal = curtailment?.total30_kwh;
@@ -36,6 +36,19 @@ export default async function Optimization({searchParams}) {
     {demo ? <small className="demo-label">{t("Demo data")}</small> : <Refresh interval={forecast?.ready ? 60000 : 30000}/>}
     <div className="heading"><h1>{t("Optimization")}</h1></div>
     {!metrics && !forecast && !hourly && !curtailment ? <section className="panel"><h2>{t("Planning data unavailable")}</h2><p><a href="/optimization">{t("Retry")}</a> · <a href="?demo=1">{t("Preview demo")}</a></p></section> : <>
+    {!demo && <section className="panel">
+      <h2>{t("Tomorrow’s solar potential")}</h2>
+      {dayAhead?.ready ? <>
+        <p><strong>{fmtNum(dayAhead.pv_kwh)} kWh</strong> · {t("Available PV from 06:00 to 18:00")}</p>
+        <p><strong>{fmtNum(dayAhead.unused_kwh)} kWh</strong> · {t("Expected unused solar")}
+          {dayAhead.peak_hour != null && <> · {t("Peak surplus")} {clock(dayAhead.peak_hour)}–{clock(dayAhead.peak_hour+1)}</>}</p>
+        <details><summary>{t("Hourly forecast")}</summary>
+          <p>{t("Range across past load and battery patterns")} · {fmtNum(dayAhead.scenario_low_kwh)}–{fmtNum(dayAhead.scenario_high_kwh)} kWh</p>
+          <table><thead><tr><th>{t("Hour")}</th><th>{t("Available PV")} (kW)</th><th>{t("Unused solar")} (kW)</th></tr></thead>
+            <tbody>{dayAhead.hours.map(row=><tr key={row.hour}><td>{clock(row.hour)}</td><td>{fmtNum(row.pv_kw)}</td><td>{fmtNum(row.unused_kw)}</td></tr>)}</tbody></table>
+        </details>
+      </> : <p>{t("Forecast unavailable.")}</p>}
+    </section>}
     <section className="panel overnight">
       <div><small><NavIcon name="moon"/>{t(" Tonight’s battery")}</small>
         <h2>{plan?.enough == null ? t("Coverage unknown") : plan.enough ? t("Enough for a typical night") : t("Some grid power needed")}</h2>
@@ -56,7 +69,7 @@ export default async function Optimization({searchParams}) {
       <div className="source-legend">{Object.entries(sourceLabels).filter(([key])=>cells.some(cell=>cell.level===key)).map(([key,label])=>
         <span key={key}><i className={"source-"+key} aria-hidden="true"/>{t(label)}</span>)}</div>
       {suggestions.length>0 && <details className="actions"><summary>{t("Suggested actions · ")}{suggestions.length}</summary>{suggestions.map(s=><article key={s.id}><b>{t(s.title)}</b><p>{lang==="vi" && s.id==="wash-now" ? "Đang dư "+fmtNum((metrics.pv_power_w-metrics.load_power_w)/1000)+" kW điện mặt trời. Có thể chạy thiết bị ngay." : t(s.detail)}</p></article>)}</details>}
-    </section><section className="panel"><h2><NavIcon name="sun"/>{t(" Solar forecast")}</h2><small>{t("Daily generation · kWh")}</small>
+    </section><section className="panel"><h2><NavIcon name="sun"/>{t(" Solar forecast")}</h2><small>{t("Expected output under typical usage · kWh")}</small>
       {days.length ? <div className="forecast-bars">{days.map(d=><div key={d.date}><b>{fmtNum(d.kwh)}</b><div className="barwell"><i style={{height:(d.kwh ?? 0)/Math.max(1,...days.map(v=>v.kwh ?? 0))*100+"%"}}/></div><small>{d.today ? t("Today") : parseDateMonth(d.date,lang)}</small></div>)}</div> : <p>{t("Forecast unavailable.")}</p>}
       {advanced && forecast?.quality?.mae != null && <details><summary>{t("Forecast accuracy")}</summary><p>{t("Backtest mean absolute error · ")}{fmtNum(forecast.quality.mae)} kWh</p></details>}
     </section></div>

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -57,6 +57,7 @@ class HistoryStore:
                      day TEXT PRIMARY KEY, lost REAL, full_at TEXT, gain REAL
                    )"""
             )
+        con.execute("CREATE TABLE IF NOT EXISTS day_ahead_forecasts(day TEXT PRIMARY KEY, payload TEXT NOT NULL)")
         # Sức khoẻ pin theo ngày (cho biểu đồ xu hướng SOH/throughput dài hạn). KHÔNG prune —
         # vài trăm dòng rất nhẹ. soh = giá trị MỚI NHẤT trong ngày (đổi rất chậm); charge/discharge
         # là throughput LŨY KẾ ĐỜI PIN (đơn điệu tăng) -> dùng MAX để không bao giờ tụt.
@@ -616,6 +617,36 @@ class HistoryStore:
         con.close()
         rows.reverse()
         return rows
+
+    def day_ahead_snapshot(self, day, payload=None):
+        with closing(sqlite3.connect(self.path)) as con, con:
+            if payload is not None:
+                con.execute("INSERT OR IGNORE INTO day_ahead_forecasts VALUES (?,?)", (day, json.dumps(payload)))
+            row = con.execute("SELECT payload FROM day_ahead_forecasts WHERE day=?", (day,)).fetchone()
+            return json.loads(row[0]) if row else None
+
+    def day_ahead_profiles(self, start, end):
+        # Weight completed days equally despite mixed one- and five-minute telemetry.
+        with closing(sqlite3.connect(self.path)) as con:
+            rows = con.execute("""
+                SELECT substr(minute,1,10), substr(minute,12,2), avg(load)/1000,
+                       avg(CASE WHEN substr(minute,12,5) BETWEEN '06:00' AND '06:09' THEN soc END),
+                       max(pv+grid-load)/1000.0
+                FROM samples WHERE minute>=? AND minute<? AND load>=0
+                  AND substr(minute,12,2) BETWEEN '06' AND '17'
+                GROUP BY 1,2 HAVING count(DISTINCT CAST(substr(minute,15,2) AS INTEGER)/5)>=10
+                ORDER BY 1,2
+            """, (start, end)).fetchall()
+        profiles = {}
+        for day, hour, load, soc, charge in rows:
+            profile = profiles.setdefault(day, dict(weekend=date.fromisoformat(day).weekday() >= 5,
+                                                   loads=[], soc=None, peak_charge_kw=0))
+            profile["loads"].append(load)
+            if hour == "06":
+                profile["soc"] = soc
+            profile["peak_charge_kw"] = max(profile["peak_charge_kw"], charge or 0)
+        return [p for p in profiles.values()
+                if len(p["loads"]) == 12 and p["soc"] is not None and 0 <= p["soc"] <= 100]
 
     def satellite_gains(self, start: str, before: str) -> dict[str, float | None]:
         with closing(sqlite3.connect(self.path)) as con:

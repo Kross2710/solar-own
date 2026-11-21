@@ -31,6 +31,7 @@ class AppRuntime:
     live_fallback_on: bool = False
     forecaster: SolarForecaster = field(default_factory=SolarForecaster)
     satellite_today: tuple[str, float, dict[str, float | None]] | None = None
+    day_ahead_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     satellite_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     accuracy_init_task: asyncio.Task[Any] | None = None
     # Weather fetch + training must not overlap (loop vs. first /api/forecast request).

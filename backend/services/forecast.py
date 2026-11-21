@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime
 from typing import Any
 
+from backend.services.day_ahead import build_day_ahead
 from backend.runtime import AppRuntime
 from providers import forecast as fc_mod
 from providers.base import VN_TZ
@@ -96,7 +97,8 @@ async def forecast_loop(runtime: AppRuntime) -> None:
             async with runtime.forecast_lock:
                 if not first_pass or not runtime.forecaster.ready:
                     await refresh_forecast(runtime)
-                first_pass = False
+                await build_day_ahead(runtime)
+            first_pass = False
         except asyncio.CancelledError:
             raise
         except Exception as error:

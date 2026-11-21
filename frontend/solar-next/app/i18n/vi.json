@@ -1,4 +1,14 @@
 {
+  "Tomorrow’s solar potential": "Tiềm năng điện mặt trời ngày mai",
+  "Available PV from 06:00 to 18:00": "Điện có thể phát từ 06:00 đến 18:00",
+  "Expected unused solar": "Điện dư dự kiến",
+  "Peak surplus": "Dư nhiều nhất",
+  "Hourly forecast": "Dự báo theo giờ",
+  "Range across past load and battery patterns": "Khoảng điện dư theo các kịch bản tải và mức pin trong lịch sử",
+  "Hour": "Giờ",
+  "Available PV": "Có thể phát",
+  "Expected output under typical usage · kWh": "Sản lượng dự kiến theo thói quen sử dụng · kWh",
+
   "Overview": "Tổng quan",
   "History": "Lịch sử",
   "Money": "Tiền điện",
