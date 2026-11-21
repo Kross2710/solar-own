@@ -58,3 +58,8 @@ body{min-height:100dvh;display:flex;flex-direction:column}body>main{width:100%;f
     transform: translateY(5px);
   }
 }
+
+.push-settings{margin-top:16px}.push-settings h2{margin:0;font-size:19px}.push-settings p{margin:8px 0;color:var(--muted)}
+.push-actions{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:14px 0 4px}.push-actions label{display:grid;gap:6px;max-width:100%}
+.push-actions input,.push-actions button{min-height:44px;border:1px solid var(--edge);border-radius:9px;padding:8px 12px;color:var(--text);background:var(--bg);font:inherit}
+.push-actions button{cursor:pointer}.push-actions button:first-of-type{color:#182016;background:var(--sun);font-weight:600}.push-actions button:disabled{opacity:.55;cursor:default}

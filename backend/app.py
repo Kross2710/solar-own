@@ -13,6 +13,7 @@ from backend.api.assistant import router as assistant_router
 from backend.api.history import router as history_router
 from backend.api.metrics import router as metrics_router
 from backend.api.optimization import router as optimization_router
+from backend.api.push import router as push_router
 from backend.api.system import router as system_router
 from backend.runtime import AppRuntime, create_runtime
 from backend.services.collector import close_providers, poll_loop
@@ -38,6 +39,8 @@ def create_app(
             asyncio.create_task(forecast_loop(app_runtime)),
             asyncio.create_task(notices_loop(app_runtime)),
         ]
+        if app_runtime.push_alerts is not None:
+            tasks.append(asyncio.create_task(app_runtime.push_alerts.run()))
         try:
             yield
         finally:
@@ -72,6 +75,7 @@ def create_app(
     application.include_router(optimization_router)
     application.include_router(assistant_router)
     application.include_router(system_router)
+    application.include_router(push_router)
 
     web_root = app_runtime.root / "web"
     if mount_static and web_root.exists():

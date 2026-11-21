@@ -13,6 +13,9 @@ from providers.base import VN_TZ
 async def snapshot(runtime: AppRuntime) -> dict[str, Any]:
     metrics = (await runtime.live_provider.get_metrics()).to_dict()
 
+    if runtime.push_alerts is not None:
+        runtime.push_alerts.observe(metrics)
+
     fell_back = False
     if (
         metrics.get("status") == "offline"

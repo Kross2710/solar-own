@@ -20,6 +20,9 @@ _CREDENTIAL_ENV = {
     ("evn", "portal", "username"): "SOLAR_EVN_USERNAME",
     ("evn", "portal", "password"): "SOLAR_EVN_PASSWORD",
     ("ai", "api_key"): "SOLAR_GEMINI_API_KEY",
+    ("push", "private_key_file"): "SOLAR_PUSH_PRIVATE_KEY_FILE",
+    ("push", "contact"): "SOLAR_PUSH_CONTACT",
+    ("push", "setup_code"): "SOLAR_PUSH_SETUP_CODE",
 }
 
 
