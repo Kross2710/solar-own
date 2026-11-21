@@ -1,6 +1,7 @@
 "use client";
 import {useRouter} from "next/navigation";
 import {useOptimistic,useTransition} from "react";
+import PushSettings from "./PushSettings";
 import {usePreferences} from "../i18n/context";
 
 export default function Settings() {
@@ -21,5 +22,5 @@ export default function Settings() {
         <option value="en">English</option><option value="vi">Tiếng Việt</option></select></div>
       <div className="pref-row"><label htmlFor="advanced">{t("Advanced readings")}<small>{t("Show inverter specifications, daily consumption and forecast diagnostics.")}</small></label>
       <input type="checkbox" role="switch" id="advanced" checked={shown.advanced} disabled={pending} onChange={e=>save("advanced",e.target.checked?"1":"0")}/></div>
-    </section></main>;
+    </section><PushSettings/></main>;
 }

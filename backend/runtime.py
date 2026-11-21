@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from fastapi import Request
 
 from backend.config import PROJECT_ROOT, load_config
 from backend.provider_factory import build_provider
+from backend.services.push import PushAlerts
 from providers.assistant import Assistant
 from providers.base import Provider
 from providers.evn import EvnTariff
@@ -42,6 +44,7 @@ class AppRuntime:
     sync_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     last_sync: dict[str, Any] | None = None
     assistant: Assistant | None = None
+    push_alerts: PushAlerts | None = None
 
     @property
     def history_source(self) -> str | None:
@@ -70,6 +73,17 @@ def create_runtime(
         )
     )
 
+    push_alerts = None
+    push_config = app_config.get("push") or {}
+    if push_config:
+        if live_provider.name == "mock":
+            logging.getLogger(__name__).warning("Home Solar Web Push requires a real telemetry provider")
+        else:
+            try:
+                push_alerts = PushAlerts(root, push_config)
+            except Exception as error:
+                logging.getLogger(__name__).warning("Home Solar Web Push is unavailable (%s)", type(error).__name__)
+
     return AppRuntime(
         root=root,
         config=app_config,
@@ -79,6 +93,7 @@ def create_runtime(
         store=HistoryStore(root / "history.db", satellite_curtailment=history_provider.name == "cloud"),
         tariff=EvnTariff.from_config(app_config.get("evn")),
         assistant=Assistant(app_config.get("ai")),
+        push_alerts=push_alerts,
     )
 
 

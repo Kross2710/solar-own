@@ -3,7 +3,10 @@ import SiteHeader,{SiteFooter} from "./SiteHeader";
 import {preferences} from "./i18n/preferences";
 import {PreferenceProvider} from "./i18n/context";
 
-export const metadata = { title: "Home Solar" };
+export const metadata = {
+  title: "Home Solar",
+  appleWebApp: { capable: true, title: "Home Solar" },
+};
 export const viewport = { themeColor: "#111613" };
 
 export default async function Layout({ children }) {

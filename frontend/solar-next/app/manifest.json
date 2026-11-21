@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Home Solar",
+  "short_name": "Home Solar",
+  "description": "Monitor your home solar system",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#111613",
+  "background_color": "#111613",
+  "icons": [
+    { "src": "/icons/home-solar-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/home-solar-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

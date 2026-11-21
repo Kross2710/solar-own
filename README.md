@@ -27,7 +27,7 @@ On startup the API fills missing SEMS history, patches recent sample gaps, rebui
 | `/history` | Daily generation, month and year totals, self-powered days |
 | `/money` | Cycle savings, projected EVN bill, the last real bill, and the current tariff tier |
 | `/optimization` | Tonight's battery plan, best hours to run loads, wasted sun, and the next days' yield |
-| `/settings` | English or Vietnamese interface and advanced readings |
+| `/settings` | Language, advanced readings, and device notifications |
 | `/assistant` | Rule-based notices and a streaming chat that can look up history before answering |
 
 Settings stores language and advanced readings in browser cookies. The Assistant keeps conversations on the current browser and can display and dismiss system notices.
@@ -85,6 +85,38 @@ Open [http://localhost:3001](http://localhost:3001). The API listens on [http://
 To open the dev server from another device, run `npx next dev --hostname 0.0.0.0 --port 3001` and configure the device's origin in `frontend/solar-next/next.config.mjs` if needed.
 
 `debugs/backfill_loop.py` and `debugs/backfill_evn.py` run one sync pass by hand. The server already does this on startup, so they are only for a one-off check.
+
+## Home Screen and iPhone notifications
+
+After opening the HTTPS dashboard in Safari on iOS 16.4 or later, use **Share → Add to Home Screen**. Open the Home Solar icon, go to **Settings → Notifications**, enter the device setup code, and tap **Enable notifications**. Grant permission, then tap **Send test** and check the iPhone's notifications.
+
+To enable Web Push on the server, use a real inverter provider and install the optional sender in the backend's Python environment. Generate the private key once from the project root:
+
+```bash
+pip install 'pywebpush>=2.1,<3'
+(umask 077 && python - <<'PYKEY'
+from py_vapid import Vapid
+
+key = Vapid()
+key.generate_keys()
+with open(".env.solar-vapid.pem", "xb") as output:
+    output.write(key.private_pem())
+PYKEY
+)
+python -c 'import secrets; print(secrets.token_urlsafe(32))'
+```
+
+Add these settings to the server's private `.env` using your email and the generated setup code:
+
+```dotenv
+SOLAR_PUSH_PRIVATE_KEY_FILE=.env.solar-vapid.pem
+SOLAR_PUSH_CONTACT=mailto:owner@example.com
+SOLAR_PUSH_SETUP_CODE=<generated-device-setup-code>
+```
+
+Restart the backend and serve the Next.js app and its `/api/push/*` proxy at the same HTTPS origin that the iPhone uses. The backend needs outbound HTTPS access to Apple's `*.push.apple.com` endpoints. Keep the VAPID key across releases. Back up the key and `push.db` privately if moving the service. Changing the key or dashboard origin requires re-enrolling the iPhone.
+
+The backend sends an alert once per low-battery episode and rearms at 22%. It also reports when 10 minutes elapse without any fresh data from the primary feed and when that feed recovers. The server must stay online with access to the push service to send alerts.
 
 ## What the API does in the background
 
