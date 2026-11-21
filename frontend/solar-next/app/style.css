@@ -36,20 +36,12 @@ body{min-height:100dvh;display:flex;flex-direction:column}body>main{width:100%;f
   .rc-bar nav a{flex-direction:column;gap:4px;padding:6px 1px;font-size:clamp(11px,3vw,13px)}
   .prefs-link{justify-self:end}
 }
-/* Only the page content participates in a tab transition. */
-html[data-section-slide] { view-transition-name: none; --slide-offset: 28px; }
-html[data-section-slide="back"] { --slide-offset: -28px; }
-html[data-section-slide] main { view-transition-name: dashboard-content; }
-html[data-section-slide]::view-transition { pointer-events: none; }
-::view-transition-group(dashboard-content) { animation-duration: 0s; }
-::view-transition-old(dashboard-content),
-::view-transition-new(dashboard-content) {
-  height: 100%;
-  object-fit: none;
-  object-position: top left;
-  mix-blend-mode: normal;
-  animation: section-enter 260ms cubic-bezier(.22,.61,.36,1) both;
+
+.route-loading {
+  padding-top: 32px;
+  color: var(--muted);
 }
-::view-transition-old(dashboard-content) { animation-name: section-exit; }
-@keyframes section-enter { from { transform: translateX(var(--slide-offset)); opacity: 0; } }
-@keyframes section-exit { to { transform: translateX(calc(-1 * var(--slide-offset))); opacity: 0; } }
+.route-loading .panel {
+  margin-top: 16px;
+  min-height: 160px;
+}
