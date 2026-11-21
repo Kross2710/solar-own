@@ -45,3 +45,16 @@ body{min-height:100dvh;display:flex;flex-direction:column}body>main{width:100%;f
   margin-top: 16px;
   min-height: 160px;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  body > main:not(.route-loading) {
+    animation: page-enter 160ms ease-out;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0.75;
+    transform: translateY(5px);
+  }
+}
