@@ -7,7 +7,7 @@ export const metadata = {
   title: "Home Solar",
   appleWebApp: { capable: true, title: "Home Solar" },
 };
-export const viewport = { themeColor: "#111613" };
+export const viewport = { themeColor: "#111613", viewportFit: "cover" };
 
 export default async function Layout({ children }) {
   const settings=await preferences();

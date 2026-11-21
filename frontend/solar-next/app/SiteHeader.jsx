@@ -4,7 +4,7 @@ import NavIcon from "./shared/NavIcon";
 import Image from "next/image";
 import Link from "next/link";
 import {usePreferences} from "./i18n/context";
-const pages=[["/","Overview"],["/history","History"],["/money","Money"],["/optimization","Optimization"],["/assistant","Assistant"]];
+const pages=[["/","Overview"],["/history","History"],["/money","Money"],["/optimization","Optimization","Optimize"],["/assistant","Assistant"]];
 
 export default function SiteHeader() {
   const path=usePathname(),demo=useSearchParams().get("demo")==="1";
@@ -14,7 +14,15 @@ export default function SiteHeader() {
     <Link href={"/"+suffix} className="brand">
       <Image src="/home-solar-logo.svg" alt="Home Solar" width={152} height={48} unoptimized/>
     </Link>
-    <nav aria-label={t("Main navigation")}>{pages.map(([url,title])=><Link key={url} href={url+suffix} aria-current={url===path?"page":undefined}><NavIcon name={title}/><span>{t(title)}</span></Link>)}</nav>
+    <nav aria-label={t("Main navigation")}>
+      {pages.map(([url,title,shortTitle])=>
+        <Link key={url} href={url+suffix} aria-current={url===path?"page":undefined}>
+          <NavIcon name={title}/>
+          <span className={shortTitle ? "nav-full-label" : undefined}>{t(title)}</span>
+          {shortTitle && <span className="nav-short-label">{t(shortTitle)}</span>}
+        </Link>
+      )}
+    </nav>
     <Link className="prefs-link" aria-current={path==="/settings"?"page":undefined} href={"/settings"+suffix}><NavIcon name="settings"/> {t("Settings")}</Link>
   </div></header>;
 }
