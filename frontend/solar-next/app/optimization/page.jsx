@@ -2,15 +2,13 @@ import {pageMetadata} from "../i18n/metadata";
 import {preferences} from "../i18n/preferences";
 import {translator} from "../i18n/translate";
 import "./optimization.css";
-import Readings from "../shared/Readings";
 import Refresh from "../shared/Refresh";
-import NavIcon from "../shared/NavIcon";
 import {read} from "../shared/read";
 import {fmtNum as formatNumber, parseDateMonth} from "../shared/format";
 import {batteryPlan,bestWindow,buildSuggestions,dayKind,hourCells,tomorrowOf} from "./planning";
 import {demoData} from "./demo";
 
-const sourceLabels = {cheap:"Solar", mid:"Battery", dear:"Grid", none:"No data"};
+
 const clock = hour => String(hour).padStart(2,"0") + ":00";
 
 export default async function Optimization({searchParams}) {
@@ -32,66 +30,54 @@ export default async function Optimization({searchParams}) {
   const suggestions = buildSuggestions({metrics,kind,hour,tier:money?.projected_tier ?? money?.tier});
   const cells = hourCells(hourly?.hours ?? []);
   const window = bestWindow(cells);
+  const hours = dayAhead?.ready ? dayAhead.hours : [];
+  const maxPower = Math.max(1, ...hours.map(row => row.pv_kw));
+  const peak = dayAhead?.peak_hour;
+  const energy = value => value == null ? t("Unavailable") : fmtNum(value) + " kWh";
   return <main className="energy-page opt">
     {demo ? <small className="demo-label">{t("Demo data")}</small> : <Refresh interval={forecast?.ready ? 60000 : 30000}/>}
     <div className="heading"><h1>{t("Optimization")}</h1></div>
-    {!metrics && !forecast && !hourly && !curtailment ? <section className="panel"><h2>{t("Planning data unavailable")}</h2><p><a href="/optimization">{t("Retry")}</a> · <a href="?demo=1">{t("Preview demo")}</a></p></section> : <>
-    {!demo && <section className="panel">
-      <h2>{t("Tomorrow’s solar potential")}</h2>
-      {dayAhead?.ready ? <>
-        <p><strong>{fmtNum(dayAhead.pv_kwh)} kWh</strong> · {t("Available PV from 06:00 to 18:00")}</p>
-        <p><strong>{fmtNum(dayAhead.unused_kwh)} kWh</strong> · {t("Expected unused solar")}
-          {dayAhead.peak_hour != null && <> · {t("Peak surplus")} {clock(dayAhead.peak_hour)}–{clock(dayAhead.peak_hour+1)}</>}</p>
-        <details><summary>{t("Hourly forecast")}</summary>
-          <p>{t("Range across past load and battery patterns")} · {fmtNum(dayAhead.scenario_low_kwh)}–{fmtNum(dayAhead.scenario_high_kwh)} kWh</p>
-          <table><thead><tr><th>{t("Hour")}</th><th>{t("Available PV")} (kW)</th><th>{t("Unused solar")} (kW)</th></tr></thead>
-            <tbody>{dayAhead.hours.map(row=><tr key={row.hour}><td>{clock(row.hour)}</td><td>{fmtNum(row.pv_kw)}</td><td>{fmtNum(row.unused_kw)}</td></tr>)}</tbody></table>
-        </details>
-      </> : <p>{t("Forecast unavailable.")}</p>}
-    </section>}
-    <section className="panel overnight">
-      <div><small><NavIcon name="moon"/>{t(" Tonight’s battery")}</small>
-        <h2>{plan?.enough == null ? t("Coverage unknown") : plan.enough ? t("Enough for a typical night") : t("Some grid power needed")}</h2>
-        {plan && <span>{fmtNum(plan.usableKwh)}{t(" kWh available")}{plan.needKwh != null && " · "+fmtNum(plan.needKwh)+t(" kWh typically needed")}</span>}
-      </div>
-      <div className="battery" aria-label={t("Battery charge")}><div style={{width:Math.min(100,Math.max(0,metrics?.battery_soc ?? 0))+"%"}}/><b>{fmtNum(metrics?.battery_soc)}%</b></div>
-    </section>
-    <div className="energy-columns"><section className="panel"><h2><NavIcon name="clock"/>{t(" Best time for appliances")}</h2>
-      <strong className="window">{window ? clock(window.from)+" – "+clock(window.to) : t("No clear window")}</strong>
-      <small>{t("Typical solar window · Vietnam time")}</small>
-      <ol className="hour-sources" aria-label={t("Typical energy source by hour")}>
-        {cells.map(({hour,level})=>{
-          const label=clock(hour)+"–"+clock(hour+1)+" · "+t(sourceLabels[level]);
-          return <li key={hour} className={"source-"+level} title={label}><span className="hour-label">{label}</span></li>;
-        })}
-      </ol>
-      <div className="ticks" aria-hidden="true"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
-      <div className="source-legend">{Object.entries(sourceLabels).filter(([key])=>cells.some(cell=>cell.level===key)).map(([key,label])=>
-        <span key={key}><i className={"source-"+key} aria-hidden="true"/>{t(label)}</span>)}</div>
-      {suggestions.length>0 && <details className="actions"><summary>{t("Suggested actions · ")}{suggestions.length}</summary>{suggestions.map(s=><article key={s.id}><b>{t(s.title)}</b><p>{lang==="vi" && s.id==="wash-now" ? "Đang dư "+fmtNum((metrics.pv_power_w-metrics.load_power_w)/1000)+" kW điện mặt trời. Có thể chạy thiết bị ngay." : t(s.detail)}</p></article>)}</details>}
-    </section><section className="panel"><h2><NavIcon name="sun"/>{t(" Solar forecast")}</h2><small>{t("Expected output under typical usage · kWh")}</small>
-      {days.length ? <div className="forecast-bars">{days.map(d=><div key={d.date}><b>{fmtNum(d.kwh)}</b><div className="barwell"><i style={{height:(d.kwh ?? 0)/Math.max(1,...days.map(v=>v.kwh ?? 0))*100+"%"}}/></div><small>{d.today ? t("Today") : parseDateMonth(d.date,lang)}</small></div>)}</div> : <p>{t("Forecast unavailable.")}</p>}
-      {advanced && forecast?.quality?.mae != null && <details><summary>{t("Forecast accuracy")}</summary><p>{t("Backtest mean absolute error · ")}{fmtNum(forecast.quality.mae)} kWh</p></details>}
-    </section></div>
-    {advanced && forecast?.ready && <Readings title={t("Forecast diagnostics")} rows={[
-      [t("Model"),forecast.model],[t("Training days"),forecast.quality?.n_train],
-      ["MAE",fmtNum(forecast.quality?.mae)+" kWh"],["RMSE",fmtNum(forecast.quality?.rmse)+" kWh"]
-    ]}/>}
-    {curtailment?.supported && <section className="panel unused">
-      <div>
-        <h2><NavIcon name="downRight"/>{t(" Unused solar")}</h2>
-        <small>{t(satelliteEstimate ? "Satellite estimate today" : "Estimated today")}</small>
-      </div>
-      <strong>{wastedToday == null ? t("Unavailable") : <>{fmtNum(wastedToday)} <small>kWh</small></>}</strong>
-      {satelliteEstimate && wastedToday != null && coveredMinutes < 720 &&
-        <small>{fmtNum(coveredMinutes)} {t("of 720 daylight minutes covered")}</small>}
-      <details>
-        <summary>{t(satelliteEstimate ? "Past 30 completed days" : "Recent total")}</summary>
-        <p>{wastedTotal == null ? t("Unavailable") :
-          <>{fmtNum(wastedTotal)}{t(" kWh over ")}{curtailment.days}{t(" recorded days")}</>}</p>
-      </details>
-    </section>}</>}
-
+    {!metrics && !forecast && !hourly && !curtailment && !dayAhead?.ready ? <section>
+      <h2>{t("Planning data unavailable")}</h2><a href="/optimization">{t("Retry")}</a> · <a href="?demo=1">{t("Preview demo")}</a>
+    </section> : <>
+      <section className="solar-plan">
+        <div className="plan-lead">
+          <h2>{t("Tomorrow’s surplus")}</h2>
+          {dayAhead?.ready ? <>
+            <p className="surplus-number">{fmtNum(dayAhead.unused_kwh)} <span>kWh</span></p>
+            <p className="plan-note">{t("Expected unused solar")} · {parseDateMonth(dayAhead.date,lang)}</p>
+            <dl>
+              {peak != null && <div><dt>{t("Peak surplus")}</dt><dd>{clock(peak)}–{clock(peak+1)}</dd></div>}
+              <div><dt>{t("Available PV from 06:00 to 18:00")}</dt><dd>{energy(dayAhead.pv_kwh)}</dd></div>
+              <div><dt>{t("Range across past load and battery patterns")}</dt><dd>{fmtNum(dayAhead.scenario_low_kwh)}–{energy(dayAhead.scenario_high_kwh)}</dd></div>
+            </dl>
+          </> : <><p>{t("Forecast unavailable.")}</p>{window && <p>{t("Typical solar window · Vietnam time")} · {clock(window.from)}–{clock(window.to)}</p>}</>}
+        </div>
+        {hours.length > 0 && <div className="plan-hours">
+          <h3>{t("Hourly forecast")}</h3>
+          <table><thead><tr><th scope="col">{t("Hour")}</th><th scope="col">{t("Available PV")} (kW)</th><th scope="col">{t("Unused solar")} (kW)</th></tr></thead>
+            <tbody>{hours.map(row=><tr key={row.hour} className={row.hour === peak ? "peak" : undefined}>
+              <th scope="row">{clock(row.hour)}</th><td>{fmtNum(row.pv_kw)}</td>
+              <td><span className="power-track" aria-hidden="true"><i style={{width:100*row.unused_kw/maxPower+"%"}}/></span>{fmtNum(row.unused_kw)}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>}
+      </section>
+      <section className="plan-section"><h2>{t("Today")}</h2><dl>
+        {curtailment?.supported && <div><dt>{t(satelliteEstimate ? "Unused solar · satellite estimate" : "Unused solar")}</dt><dd>{energy(wastedToday)}
+          {satelliteEstimate && wastedToday != null && coveredMinutes < 720 && <small>{fmtNum(coveredMinutes)} {t("of 720 daylight minutes covered")}</small>}</dd></div>}
+        <div><dt>{t("Tonight’s battery")}</dt><dd>{plan?.enough == null ? t("Coverage unknown") : t(plan.enough ? "Enough for a typical night" : "Some grid power needed")}
+          {plan && <small>{fmtNum(metrics?.battery_soc)}% · {fmtNum(plan.usableKwh)}{t(" kWh available")}{plan.needKwh != null && " · "+fmtNum(plan.needKwh)+t(" kWh typically needed")}</small>}</dd></div>
+      </dl>{suggestions.length>0 && <ul>{suggestions.map(s=><li key={s.id}>{t(s.title)}</li>)}</ul>}</section>
+      <section className="plan-section"><h2>{t("Expected generation")}</h2>
+        <p className="plan-note">{t("Expected output under typical usage · kWh")}</p>
+        {days.length ? <ol className="daily-yield">{days.map(d=><li key={d.date}><small>{d.today ? t("Today") : parseDateMonth(d.date,lang)}</small><b>{fmtNum(d.kwh)}</b></li>)}</ol> : <p>{t("Forecast unavailable.")}</p>}
+        {advanced && forecast?.quality && <p className="plan-note">{forecast.model} · MAE {energy(forecast.quality.mae)} · RMSE {energy(forecast.quality.rmse)} · {t("Training days")} {forecast.quality.n_train}</p>}
+      </section>
+      {curtailment?.supported && <section className="plan-section"><h2>{t("Unused solar history")}</h2>
+        <dl><div><dt>{t(satelliteEstimate ? "Past 30 completed days" : "Recent total")}</dt><dd>{energy(wastedTotal)}<small>{curtailment.days}{t(" recorded days")}</small></dd></div></dl>
+      </section>}
+    </>}
   </main>;
 }
 
