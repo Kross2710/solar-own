@@ -1,7 +1,6 @@
 "use client";
 import {usePathname,useSearchParams} from "next/navigation";
 import NavIcon from "./shared/NavIcon";
-import {useSectionTransition} from "./shared/useSectionTransition";
 import Image from "next/image";
 import Link from "next/link";
 import {usePreferences} from "./i18n/context";
@@ -10,13 +9,12 @@ const pages=[["/","Overview"],["/history","History"],["/money","Money"],["/optim
 export default function SiteHeader() {
   const path=usePathname(),demo=useSearchParams().get("demo")==="1";
   const {t}=usePreferences();
-  const navigate=useSectionTransition(path,pages);
   const suffix=demo?"?demo=1":"";
   return <header className="rc-header"><div className="rc-bar">
     <Link href={"/"+suffix} className="brand">
       <Image src="/home-solar-logo.svg" alt="Home Solar" width={152} height={48} unoptimized/>
     </Link>
-    <nav aria-label={t("Main navigation")}>{pages.map(([url,title])=><Link key={url} href={url+suffix} onNavigate={event=>navigate(event,url,suffix)} aria-current={url===path?"page":undefined}><NavIcon name={title}/><span>{t(title)}</span></Link>)}</nav>
+    <nav aria-label={t("Main navigation")}>{pages.map(([url,title])=><Link key={url} href={url+suffix} aria-current={url===path?"page":undefined}><NavIcon name={title}/><span>{t(title)}</span></Link>)}</nav>
     <Link className="prefs-link" aria-current={path==="/settings"?"page":undefined} href={"/settings"+suffix}><NavIcon name="settings"/> {t("Settings")}</Link>
   </div></header>;
 }
