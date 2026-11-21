@@ -97,8 +97,8 @@ async def forecast_loop(runtime: AppRuntime) -> None:
             async with runtime.forecast_lock:
                 if not first_pass or not runtime.forecaster.ready:
                     await refresh_forecast(runtime)
-                await build_day_ahead(runtime)
-            first_pass = False
+                first_pass = False
+            await build_day_ahead(runtime)
         except asyncio.CancelledError:
             raise
         except Exception as error:
