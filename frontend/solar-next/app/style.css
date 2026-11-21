@@ -1,7 +1,7 @@
 :root{color-scheme:dark;--bg:#111613;--panel:#191f1b;--edge:#343d35;--text:#f3f2e8;--muted:#b1baaf;--sun:#f5bf63;--grid:#8dbadb}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "Helvetica Neue",Arial,sans-serif;font-variant-numeric:tabular-nums}main{max-width:1110px;padding:0 clamp(15px,4vw,52px) 40px;margin:auto}
 header,.heading,.calhead,.brand,.label,.picker{display:flex;align-items:center}header,.heading,.calhead{justify-content:space-between;gap:12px}
-header{height:72px;border-bottom:1px solid var(--edge)}.brand{font-size:18px;font-weight:650;letter-spacing:-.6px;gap:9px}.status,.caption,.picker span,.week,.scale,footer,.weekday,.totals p{color:var(--muted)}.caption,.status,.picker span{font-size:12px}
+header{height:72px;border-bottom:1px solid var(--edge)}.status,.caption,.picker span,.week,.scale,footer,.weekday,.totals p{color:var(--muted)}.caption,.status,.picker span{font-size:12px}
 .heading{margin:32px 0 21px;flex-wrap:wrap}h1,h2,p{margin:0}h1{font-size:clamp(32px,5vw,56px);line-height:1.1;letter-spacing:-.055em;font-weight:520}h2{font-size:22px;letter-spacing:-.04em;font-weight:550}.picker{gap:10px}select{background:var(--panel);color:var(--text);border:1px solid var(--edge);border-radius:9px;padding:10px;font:inherit}
 .totals{display:grid;grid-template-columns:1fr 1fr;margin:24px 0;gap:12px}.totals>div,.panel,.detail{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:clamp(15px,2.4vw,28px)}
 .kwh{--series:var(--sun)}.buy{--series:var(--grid)}.label{gap:8px}.label i{width:18px;height:5px;border-radius:5px;background:var(--series)}strong{display:block;line-height:1.2;font-size:clamp(25px,4vw,45px);font-weight:500;letter-spacing:-.045em;margin:10px 0 5px}strong small{font-size:.44em;color:var(--muted);letter-spacing:0}.totals p,.scale,.weekday,footer{font-size:13px}
@@ -29,7 +29,6 @@ body{min-height:100dvh;display:flex;flex-direction:column}body>main{width:100%;f
 
 .rc-bar nav a{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .nav-icon{width:17px;height:17px;flex:none}
-.nav-icon.sunmark{width:29px;height:29px;color:var(--sun)}
 .rc-bar nav a[aria-current=page] .nav-icon{color:var(--sun)}
 @media(max-width:920px){
   .rc-bar{display:grid;grid-template-columns:1fr auto;gap:4px;padding-block:8px}
