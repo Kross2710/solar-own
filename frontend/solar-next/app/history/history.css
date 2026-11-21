@@ -1,0 +1,40 @@
+.history-page {
+  --unused-solar: #e7a7cc;
+  --unused-solar-edge: #675066;
+}
+
+.history-page .lost_kwh { --series: var(--unused-solar); }
+.history-page .totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.history-page .totals > div { padding: 16px; }
+.history-page .totals > .lost_kwh { border-color: var(--unused-solar-edge); }
+.history-page .totals strong { font-size: clamp(24px, 3vw, 34px); font-weight: 650; }
+.history-page .day { min-height: 54px; }
+.history-page .mini.unestimated {
+  background: repeating-linear-gradient(90deg, var(--unused-solar) 0 2px, transparent 2px 5px);
+  opacity: .55;
+}
+.history-page .calendar-key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 16px;
+}
+.history-page .calendar-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.history-page .calendar-legend .label { font-size: 12px; color: var(--muted); }
+.history-page .calendar-legend i { width: 14px; height: 4px; }
+.history-page .scale { margin: 0; font-size: 12px; }
+.history-page .detail { display: block; padding: 18px; }
+.history-page .detail section { margin-top: 14px; padding-top: 12px; }
+.history-page .detail strong { font-size: 27px; font-weight: 650; }
+.history-page .detail .lost_kwh strong { color: var(--unused-solar); }
+.history-page .missing-estimate-note { margin: 14px 0 0; }
+
+@media (max-width: 700px) {
+  .history-page .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .history-page .totals > div { padding: 12px; }
+  .history-page .totals > .lost_kwh { grid-column: 1 / -1; }
+  .history-page .totals .label { font-size: 13px; }
+  .history-page .calendar { padding-inline: 12px; }
+}

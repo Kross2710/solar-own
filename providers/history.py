@@ -448,19 +448,24 @@ class HistoryStore:
         "FROM battery_daily WHERE discharge_total IS NOT NULL) "
     )
 
-    def daily_full(self, days: int = 400) -> list[dict]:
+    def daily_full(self, days: int = 400, *, include_unused_solar: bool = False) -> list[dict]:
         """Trả [{day, kwh, cons, buy, batt}] (cũ -> mới) cho tính tiền theo bậc thang.
 
         batt = kWh pin xả trong ngày (xem _BATT_OUT_CTE); NULL nếu không suy được.
+        With include_unused_solar, lost_kwh is the stored estimate or NULL.
         """
+        unused_column = ", round(c.lost, 1) AS lost_kwh" if include_unused_solar else ""
+        unused_join = f"LEFT JOIN {self._curtailment_table} c ON c.day = dl.day " if include_unused_solar else ""
         con = sqlite3.connect(self.path)
         con.row_factory = sqlite3.Row
         cur = con.execute(
             self._BATT_OUT_CTE
             + "SELECT dl.day, dl.kwh, dl.cons, dl.buy, "
-            "CASE WHEN bo.gap = 1.0 AND bo.d >= 0 THEN round(bo.d, 2) END AS batt "
-            "FROM daily dl LEFT JOIN bo ON bo.day = dl.day "
-            "ORDER BY dl.day DESC LIMIT ?",
+            "CASE WHEN bo.gap = 1.0 AND bo.d >= 0 THEN round(bo.d, 2) END AS batt"
+            + unused_column
+            + " FROM daily dl LEFT JOIN bo ON bo.day = dl.day "
+            + unused_join
+            + "ORDER BY dl.day DESC LIMIT ?",
             (max(1, days),),
         )
         rows = [dict(r) for r in cur.fetchall()]
