@@ -1,4 +1,4 @@
-.opt h2 i,.overnight small i{font:normal 1.35em/1 Georgia,serif;color:var(--sun);vertical-align:middle;margin-right:5px}
+.opt h2 .nav-icon,.overnight small .nav-icon{width:1em;height:1em;color:var(--sun);vertical-align:-.125em;margin-right:5px}
 .opt .overnight,.opt .unused{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px 20px}
 .opt .overnight{background:linear-gradient(115deg,#253c30,#19231d 75%);border-color:#415b49}
 .overnight h2{font-size:clamp(23px,3.3vw,38px);line-height:1.12;margin:8px 0}.overnight span{color:var(--muted);font-size:14px}
