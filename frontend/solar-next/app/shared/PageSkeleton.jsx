@@ -9,7 +9,10 @@ export default function PageSkeleton({title, type}) {
 
   return <main className="route-loading" aria-busy="true">
     {title && <div className="heading"><h1>{t(title)}</h1></div>}
-    <p className="loading-status" role="status">{t("Loading page…")}</p>
+    <p className="loading-status" role="status">
+      <span className="loading-spinner" aria-hidden="true"/>
+      {t("Loading page…")}
+    </p>
     <div className={`panel ${type === "overview" ? "skeleton-overview" : ""}`} aria-hidden="true">
       {type === "calendar" && <div className="skeleton-grid">
         {Array.from({length: 35}, (_, day) => <span key={day}/>)}

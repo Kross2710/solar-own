@@ -259,8 +259,19 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
 }
 
 .loading-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--muted);
   margin-bottom: 14px;
+}
+
+.loading-spinner {
+  flex: 0 0 16px;
+  height: 16px;
+  border: 2px solid var(--edge);
+  border-top-color: var(--sun);
+  border-radius: 50%;
 }
 
 .skeleton-grid {
@@ -296,6 +307,10 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .loading-spinner {
+    animation: loading-spin 800ms linear infinite;
+  }
+
   .rc-bar nav a {
     transition: background-color 180ms ease, color 180ms ease;
   }
@@ -349,6 +364,10 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
   ::view-transition-new(*) {
     animation: none;
   }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(1turn); }
 }
 
 @keyframes fade-page {

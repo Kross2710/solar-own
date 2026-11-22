@@ -3,7 +3,8 @@
 import {usePreferences} from "../i18n/context";
 import "./history.css";
 import Readings from "../shared/Readings";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import NavIcon from "../shared/NavIcon";
 
 import {fmtNum} from "../shared/format";
 const formatDate = (lang,day, options) => new Intl.DateTimeFormat(lang==="vi"?"vi-VN":"en-GB", { ...options, timeZone: "UTC" }).format(new Date(day + "T00:00:00Z"));
@@ -35,6 +36,51 @@ function Details({ row }) {
   </aside>;
 }
 
+function MonthPicker({months, month, onChange}) {
+  const {t, lang} = usePreferences();
+  const dialog = useRef(null);
+  const titleId = useId();
+  const index = months.indexOf(month);
+  const label = (key, options) => formatDate(lang, key + "-01", options);
+  const fullLabel = key => label(key, {month: "long", year: "numeric"});
+  const years = [...new Set(months.map(key => key.slice(0, 4)))].reverse();
+
+  return <div className="history-month-picker" role="group" aria-label={t("Month")}>
+    <button type="button" className="history-month-arrow" aria-label={t("Previous month")}
+      disabled={index === 0} onClick={() => onChange(months[index - 1])}>
+      <NavIcon name="chevronRight"/>
+    </button>
+    <button type="button" className="history-month-current" aria-haspopup="dialog"
+      onClick={() => dialog.current.showModal()}>
+      <span aria-live="polite">{fullLabel(month)}</span>
+    </button>
+    <button type="button" className="history-month-arrow" aria-label={t("Next month")}
+      disabled={index === months.length - 1} onClick={() => onChange(months[index + 1])}>
+      <NavIcon name="chevronRight"/>
+    </button>
+
+    <dialog ref={dialog} className="history-month-dialog" aria-labelledby={titleId}>
+      <div className="history-month-dialog-head">
+        <h2 id={titleId}>{t("Choose month")}</h2>
+        <form method="dialog">
+          <button type="submit" className="history-month-close" aria-label={t("Close")}><span aria-hidden="true">×</span></button>
+        </form>
+      </div>
+      {years.map(year => <div className="history-month-year" key={year}>
+        <h3>{year}</h3>
+        <div className="history-month-grid">
+          {months.filter(key => key.startsWith(year)).map(key =>
+            <button type="button" key={key} aria-label={fullLabel(key)} aria-pressed={key === month}
+              onClick={() => {onChange(key); dialog.current.close();}}>
+              {label(key, {month: "short"})}
+            </button>
+          )}
+        </div>
+      </div>)}
+    </dialog>
+  </div>;
+}
+
 export default function History({ rows, demo }) {
   const {t,lang,advanced}=usePreferences();
   const value=n=>fmtNum(n,lang);
@@ -52,13 +98,18 @@ export default function History({ rows, demo }) {
   const count = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth()+1, 0)).getUTCDate();
 
   return <main className="history-page">{demo && <small className="demo-label">{t("Demo data")}</small>}
-    <div className="heading"><h1>{t("Energy history")}</h1>{selected && <label className="picker"><span>{t("Month")}</span><select value={month} onChange={e => setChosen(e.target.value + "-00")}>{months.toReversed().map(m => <option key={m} value={m}>{dateLabel(m+"-01",{month:"long",year:"numeric"})}</option>)}</select></label>}</div>
+    <div className="heading">
+      <h1>{t("Energy history")}</h1>
+      {selected && <MonthPicker months={months} month={month} onChange={key => {
+        if (key !== month) setChosen(key + "-00");
+      }}/>}
+    </div>
     {!selected ? <div className="panel empty"><h2>{rows ? t("No daily readings yet") : t("History is unavailable")}</h2><p>{rows ? t("Daily totals appear here after the first sync.") : t("The history API could not be reached.")}</p><a href="/history">{t("Retry")}</a> · <a href="/history?demo=1">{t("Preview with demo data")}</a></div> : <>
     <div className="totals">{sources.map(([key,label]) => {
       const known = days.map(row => row[key]).filter(Number.isFinite);
       return <div className={key} key={key}><div className="label"><i />{t(label)}</div><strong>{value(known.length ? known.reduce((a,b)=>a+b,0) : null)}{known.length > 0 && <> <small>kWh</small></>}</strong><p>{key === "lost_kwh" && <>{t("Estimate")} · </>}{lang==="vi"?known.length+" ngày có dữ liệu trong tháng":known.length+" recorded days this month"}</p></div>;
     })}</div>
-    <div className="layout"><section className="panel calendar"><div className="calhead"><h2>{dateLabel(month+"-01",{month:"long",year:"numeric"})}</h2><span className="caption">{t("Daily energy")}</span></div>
+    <div className="layout"><section className="panel calendar"><div className="calhead"><h2>{t("Daily energy")}</h2></div>
     <div className="calendar-grid">{(lang==="vi"?["T2","T3","T4","T5","T6","T7","CN"]:week).map(d => <span className="week" key={d}>{d}</span>)}{Array.from({length:offset},(_,i)=><span key={"offset"+i}/>)}
     {Array.from({length:count},(_,i)=>{const day=i+1,row=byDate.get(day);
       if (!row) return <span className="day missing" key={day} aria-label={day+t(", no reading")}>{day}</span>;
