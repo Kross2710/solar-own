@@ -2,22 +2,29 @@
 import {usePathname,useSearchParams} from "next/navigation";
 import NavIcon from "./shared/NavIcon";
 import Image from "next/image";
-import Link from "next/link";
+import Link, {useLinkStatus} from "next/link";
 import {usePreferences} from "./i18n/context";
 const pages=[["/","Overview"],["/history","History"],["/money","Money"],["/optimization","Optimization","Optimize"],["/assistant","Assistant"]];
+
+function TabStatus() {
+  const {pending} = useLinkStatus();
+  return <span hidden data-pending={pending ? "" : undefined}/>;
+}
 
 export default function SiteHeader() {
   const path=usePathname(),demo=useSearchParams().get("demo")==="1";
   const {t}=usePreferences();
+  const activeTab=pages.findIndex(([url])=>url===path);
   const suffix=demo?"?demo=1":"";
   return <header className="rc-header"><div className="rc-bar">
     <Link href={"/"+suffix} className="brand">
       <Image src="/home-solar-logo.svg" alt="Home Solar" width={152} height={48} unoptimized/>
     </Link>
-    <nav aria-label={t("Main navigation")}>
+    <nav aria-label={t("Main navigation")} style={{"--active-tab":activeTab}}>
       {pages.map(([url,title,shortTitle])=>
         <Link key={url} href={url+suffix} aria-current={url===path?"page":undefined}>
           <NavIcon name={title}/>
+          <TabStatus/>
           <span className={shortTitle ? "nav-full-label" : undefined}>{t(title)}</span>
           {shortTitle && <span className="nav-short-label">{t(shortTitle)}</span>}
         </Link>
