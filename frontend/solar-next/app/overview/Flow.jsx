@@ -31,6 +31,8 @@ function direction(key, watts) {
 export default function Flow({data,animate,status,stamp}) {
   const {t,lang}=usePreferences();
   const fmtNum=value=>formatNumber(value,lang);
+  const soc = data?.battery_soc;
+  const hasCharge = Number.isFinite(soc) && soc >= 0 && soc <= 100;
   return <section className="panel flow-panel"><div className="ov-head"><h2>{t("Power flow")}</h2><span className={"reading-state "+(animate?"active":"")}>{t(status)}</span></div>
     <div className="flow-map">
       <svg className="wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -47,8 +49,17 @@ export default function Flow({data,animate,status,stamp}) {
       <div className="hub" aria-label={t("Inverter")}><Icon name="inverter"/></div>
       {branches.map(({key,label,metric})=><div className={"terminal "+key} key={key}>
         <div className="device"><Icon name={key}/><span>{t(label)}</span></div>
-        <b>{power(data?.[metric],lang)}</b>
-        <small>{key==="battery" && Number.isFinite(data?.battery_soc) ? fmtNum(data.battery_soc)+"% · " : ""}{t(direction(key,data?.[metric]))}</small>
+        {key === "battery" && hasCharge ? <>
+          <b className="battery-charge">{fmtNum(soc)}%</b>
+          <div className="battery-level" aria-hidden="true"><span style={{width: `${soc}%`}}/></div>
+          <small className="battery-flow">
+            <span>{power(data?.[metric],lang)}</span>
+            <span>{t(direction(key,data?.[metric]))}</span>
+          </small>
+        </> : <>
+          <b>{power(data?.[metric],lang)}</b>
+          <small>{t(direction(key,data?.[metric]))}</small>
+        </>}
       </div>)}
     </div>
     <div className="flow-foot"><span>{t("Inverter reading")}</span><time>{t(stamp)}</time></div>

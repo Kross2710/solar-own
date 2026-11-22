@@ -209,36 +209,170 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
   }
 }
 
-@media (max-width: 760px) and (prefers-reduced-motion: no-preference) {
+@media (max-width: 760px) {
+  .rc-bar nav {
+    --tab-index: var(--active-tab);
+    view-transition-name: dashboard-dock;
+    --tab-width: calc((100% - 22px) / 5);
+  }
+
+  .rc-bar nav::before {
+    content: "";
+    position: absolute;
+    inset: 7px auto 7px 7px;
+    width: var(--tab-width);
+    transform: translateX(calc(var(--tab-index) * 100% + var(--tab-index) * 2px));
+    border-radius: 21px;
+    background: #ffffff24;
+    box-shadow: inset 0 1px #ffffff40, inset 0 -3px 8px #0003;
+    pointer-events: none;
+  }
+
+  .rc-bar nav:not(:has([aria-current], [data-pending]))::before {
+    display: none;
+  }
+
   .rc-bar nav a {
-    transition: background-color 180ms ease, color 180ms ease, scale 180ms ease;
+    position: relative;
   }
 
-  .rc-bar nav a:active {
-    scale: 0.94;
+  .rc-bar nav a[aria-current="page"] {
+    background: transparent;
+    box-shadow: none;
   }
+
+  .rc-bar nav:has(a:nth-child(1) [data-pending]) { --tab-index: 0; }
+  .rc-bar nav:has(a:nth-child(2) [data-pending]) { --tab-index: 1; }
+  .rc-bar nav:has(a:nth-child(3) [data-pending]) { --tab-index: 2; }
+  .rc-bar nav:has(a:nth-child(4) [data-pending]) { --tab-index: 3; }
+  .rc-bar nav:has(a:nth-child(5) [data-pending]) { --tab-index: 4; }
+  .rc-bar nav a:has([data-pending]) { color: var(--text); }
 }
 
-.route-loading {
-  padding-top: 32px;
-  color: var(--muted);
-}
 .route-loading .panel {
-  margin-top: 16px;
+  margin-bottom: 14px;
   min-height: 160px;
 }
 
+.route-loading > .loading-status:first-child {
+  margin-top: 24px;
+}
+
+.loading-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.loading-spinner {
+  flex: 0 0 16px;
+  height: 16px;
+  border: 2px solid var(--edge);
+  border-top-color: var(--sun);
+  border-radius: 50%;
+}
+
+.skeleton-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.skeleton-grid span,
+.skeleton-chart span {
+  border-radius: 7px;
+  background: var(--edge);
+  opacity: 0.7;
+}
+
+.skeleton-grid span {
+  height: clamp(30px, 7vw, 52px);
+}
+
+.skeleton-chart {
+  height: 160px;
+  display: flex;
+  align-items: end;
+  gap: clamp(4px, 1vw, 10px);
+}
+
+.skeleton-chart span {
+  flex: 1;
+}
+
+.skeleton-overview {
+  min-height: 260px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  body > main:not(.route-loading) {
-    animation: page-enter 160ms ease-out;
+  .loading-spinner {
+    animation: loading-spin 800ms linear infinite;
+  }
+
+  .rc-bar nav a {
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .rc-bar nav::before {
+    transition: transform 200ms cubic-bezier(.22, 1, .36, 1);
+  }
+
+  ::view-transition {
+    pointer-events: none;
+  }
+
+  ::view-transition-group(root),
+  ::view-transition-group(dashboard-dock),
+  ::view-transition-group(.page-crossfade) {
+    animation: none;
+  }
+
+  ::view-transition-group(dashboard-dock) {
+    z-index: 1;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-old(dashboard-dock) {
+    display: none;
+  }
+
+  ::view-transition-new(root),
+  ::view-transition-new(dashboard-dock) {
+    animation: none;
+  }
+
+  ::view-transition-old(.page-crossfade) {
+    animation: fade-page 160ms ease both reverse;
+  }
+
+  ::view-transition-new(.page-crossfade) {
+    animation: fade-page 160ms ease both;
+  }
+
+  @supports not (view-transition-class: page-crossfade) {
+    body > main:not(.route-loading) {
+      animation: fade-page 160ms ease-out both;
+    }
   }
 }
 
-@keyframes page-enter {
-  from {
-    opacity: 0.75;
-    transform: translateY(5px);
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
   }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes fade-page {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .push-settings{margin-top:16px}.push-settings h2{margin:0;font-size:19px}.push-settings p{margin:8px 0;color:var(--muted)}
