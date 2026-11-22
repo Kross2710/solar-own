@@ -9,7 +9,6 @@ from typing import Any, cast
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from backend import config
 from backend.runtime import AppRuntime, get_runtime
 from backend.services.history_summary import build_summary
 from backend.services.money import build_money
