@@ -23,36 +23,3 @@
   .trend-switch button{min-width:44px;min-height:44px}
   .times small,.y-axis small{font-size:12px}
 }
-
-.terminal.battery:has(.battery-charge) {
-  border-color: color-mix(in srgb, var(--tone) 55%, var(--panel));
-  background: linear-gradient(155deg, #29392b, #1a221d 75%);
-}
-
-.terminal .battery-charge {
-  color: var(--tone);
-  font-size: clamp(24px, 3.5vw, 34px);
-  font-weight: 700;
-  line-height: 1.12;
-}
-
-.battery-level {
-  height: 4px;
-  margin: 5px 9px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: #3b493d;
-}
-
-.battery-level span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--tone);
-}
-
-.terminal .battery-flow {
-  display: grid;
-  font-size: 11px;
-  line-height: 1.2;
-}

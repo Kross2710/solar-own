@@ -1,9 +1,11 @@
 "use client";
 
-import {usePathname} from "next/navigation";
-import PageSkeleton from "./shared/PageSkeleton";
+import {usePreferences} from "./i18n/context";
 
 export default function Loading() {
-  const path = usePathname();
-  return path === "/" ? <PageSkeleton title="Overview" type="overview"/> : <PageSkeleton/>;
+  const {t} = usePreferences();
+  return <main className="route-loading">
+    <p role="status">{t("Loading page…")}</p>
+    <div className="panel" aria-hidden="true"/>
+  </main>;
 }
