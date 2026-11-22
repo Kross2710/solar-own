@@ -184,6 +184,16 @@ class HistoryStore:
             return
         minute = str(ts)[:16]  # YYYY-MM-DDTHH:MM
         con = sqlite3.connect(self.path)
+        # Ghi đè mẫu cùng PHÚT chỉ khi timestamp MỚI HƠN hoặc BẰNG. Một live reading
+        # TRỄ (giây nhỏ) đến SAU không được đè mẫu đã có giây LỚN hơn trong cùng phút
+        # (INSERT OR REPLACE cũ đè KHÔNG điều kiện -> mất mẫu mới, sai dữ liệu). Gap-fill
+        # từ backfill_samples có ts ...:00+07:00 luôn <= live ts cùng phút -> vẫn được live
+        # đè lại. So sánh chuỗi ISO cùng định dạng giờ VN tương đương so sánh thời gian;
+        # không cần migrate dữ liệu vì các timestamp đã lưu và live đều cùng format.
+        existing = con.execute("SELECT ts FROM samples WHERE minute=?", (minute,)).fetchone()
+        if existing and existing[0] is not None and ts < existing[0]:
+            con.close()
+            return
         con.execute(
             "INSERT OR REPLACE INTO samples(minute, ts, pv, load, grid, soc, today) VALUES (?,?,?,?,?,?,?)",
             (minute, ts, m.get("pv_power_w"), m.get("load_power_w"),
