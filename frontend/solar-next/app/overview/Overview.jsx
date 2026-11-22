@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {usePreferences} from "../i18n/context";
 import {useEffect,useState} from "react";
 import {fmtMoney,fmtNum as formatNumber} from "../shared/format";
@@ -48,7 +49,7 @@ export default function Overview({initial,initialTime,demo,average,forecast,save
   const suffix=demo?"?demo=1":"";
   return <>
     <div className="ov-top"><Flow data={meter} animate={fresh} status={status} stamp={stamp}/>
-      <section className="panel day-energy"><div className="ov-head"><h2>{t("Today’s energy")}</h2><a href={"/history"+suffix} aria-label={t("Open energy history")}><NavIcon name="chevronRight"/></a></div>
+      <section className="panel day-energy"><div className="ov-head"><h2>{t("Today’s energy")}</h2><Link href={"/history"+suffix} aria-label={t("Open energy history")}><NavIcon name="chevronRight"/></Link></div>
         <div className="usage-line"><div className="usage-ring" style={{"--share":(share??0)+"%","--rest":share==null?"var(--edge)":"var(--grid)"}}><b>{share==null?"—":share+"%"}</b></div>
           <div><b>{t("Self-powered")}</b><small>{t("Solar + battery")}</small></div></div>
         <dl>{[[t("Solar generated"),today?.today_energy_kwh,"solar"],[t("Home used"),consumed,"home"],[t("Grid bought"),bought,"grid"]].map(([label,n,key])=><div key={key} className={key}><dt>{label}</dt><dd>{fmtNum(n)} <small>kWh</small></dd></div>)}</dl>
@@ -60,8 +61,8 @@ export default function Overview({initial,initialTime,demo,average,forecast,save
     ]}/>}
     {!demo && !online && <p className="ov-offline">{t("Live meter unavailable. ")}<a href="/?demo=1">{t("Preview demo")}</a></p>}
     <div className="ov-links">
-      <a href={"/optimization"+suffix}><span>{t("Today’s forecast")}</span><b>{fmtNum(forecast)} <small>kWh</small></b><NavIcon name="chevronRight"/></a>
-      <a href={"/money"+suffix}><span>{t("Saved today")}</span><b>{fmtMoney(saved)}</b><NavIcon name="chevronRight"/></a>
+      <Link href={"/optimization"+suffix}><span>{t("Today’s forecast")}</span><b>{fmtNum(forecast)} <small>kWh</small></b><NavIcon name="chevronRight"/></Link>
+      <Link href={"/money"+suffix}><span>{t("Saved today")}</span><b>{fmtMoney(saved)}</b><NavIcon name="chevronRight"/></Link>
     </div>
   </>;
 }
