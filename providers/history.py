@@ -348,10 +348,24 @@ class HistoryStore:
         if not points:
             return 0
         d = str(day)[:10]
+        # Chỉ lưu NGÀY HÔM hợp lệ (YYYY-MM-DD): ngày ảo như 2026-13-40 hay 2026-02-30
+        # bỏ cả đợt, đừng tạo hàng phút sai mốc thời gian.
+        try:
+            date.fromisoformat(d)
+        except ValueError:
+            return 0
         con = sqlite3.connect(self.path)
         for p in points:
             t = str(p.get("t") or "")[:5]
             if len(t) != 5 or t[2] != ":":
+                continue
+            # HH:MM phải là số thật, giờ 00-23, phút 00-59. SEMS gửi lộn như
+            # "25:00" hay "AA:BB" thì bỏ ĐIỂM đó nhưng vẫn giữ các điểm hợp lệ
+            # cùng phản hồi. (HH:MM:SS đã được cắt còn HH:MM ở dòng trên.)
+            hh, mm = t[:2], t[3:5]
+            if not (hh.isascii() and hh.isdigit() and mm.isascii() and mm.isdigit()):
+                continue
+            if int(hh) > 23 or int(mm) > 59:
                 continue
             # Điểm rỗng hoàn toàn (ngày tương lai / trước khi hệ chạy) -> bỏ, đừng tạo
             # hàng NULL làm gãy biểu đồ.
