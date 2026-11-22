@@ -25,7 +25,7 @@ so với baseline để biết mô hình có thật sự hơn cách đoán ngây
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Callable, Optional
 
 try:

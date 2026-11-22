@@ -581,18 +581,6 @@ class HistoryStore:
             })
         return out
 
-    def battery_trend(self, days: int = 400) -> list[dict]:
-        """[{day, soh, charge_total, discharge_total}] (cũ -> mới) cho biểu đồ xu hướng pin."""
-        con = sqlite3.connect(self.path)
-        con.row_factory = sqlite3.Row
-        cur = con.execute(
-            "SELECT day, soh, charge_total, discharge_total FROM battery_daily "
-            "ORDER BY day DESC LIMIT ?", (max(1, days),))
-        rows = [dict(r) for r in cur.fetchall()]
-        con.close()
-        rows.reverse()
-        return rows
-
     # ---------- curtailment (điện nắng bị bỏ phí) ----------
     def record_curtailment(self, day: str, lost: float, full_at) -> None:
         con = sqlite3.connect(self.path)

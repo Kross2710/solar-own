@@ -6,9 +6,8 @@ No daily totals, weather, tariff, battery settings or production tables are modi
 import argparse
 import asyncio
 from collections import Counter
-from datetime import date, datetime
+from datetime import datetime
 import json
-import math
 from pathlib import Path
 import statistics
 import sys
