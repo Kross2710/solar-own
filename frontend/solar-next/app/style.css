@@ -229,7 +229,7 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
   }
 
   .rc-bar nav:not(:has([aria-current], [data-pending]))::before {
-    opacity: 0;
+    display: none;
   }
 
   .rc-bar nav a {
@@ -316,7 +316,7 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
   }
 
   .rc-bar nav::before {
-    transition: transform 200ms cubic-bezier(.22, 1, .36, 1), opacity 140ms ease;
+    transition: transform 200ms cubic-bezier(.22, 1, .36, 1);
   }
 
   ::view-transition {
