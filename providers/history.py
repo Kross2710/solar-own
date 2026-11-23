@@ -188,8 +188,15 @@ class HistoryStore:
             return
         minute = str(ts)[:16]  # YYYY-MM-DDTHH:MM
         con = sqlite3.connect(self.path)
+        # So sánh timestamp ISO giờ VN ngay khi SQLite ghi để tránh ghi đè mẫu mới
+        # từ kết nối khác. Mẫu cũ vẫn được xét khi tính tổng ngày bên dưới.
         con.execute(
-            "INSERT OR REPLACE INTO samples(minute, ts, pv, load, grid, soc, today) VALUES (?,?,?,?,?,?,?)",
+            """INSERT INTO samples(minute, ts, pv, load, grid, soc, today)
+               VALUES (?,?,?,?,?,?,?)
+               ON CONFLICT(minute) DO UPDATE SET
+                   ts=excluded.ts, pv=excluded.pv, load=excluded.load,
+                   grid=excluded.grid, soc=excluded.soc, today=excluded.today
+               WHERE samples.ts IS NULL OR excluded.ts >= samples.ts""",
             (minute, ts, m.get("pv_power_w"), m.get("load_power_w"),
              m.get("grid_power_w"), m.get("battery_soc"), m.get("today_energy_kwh")),
         )
