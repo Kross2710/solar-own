@@ -111,6 +111,24 @@ class BackfillSampleClockTests(unittest.TestCase):
         self.assertNotIn("2026-08-07T14:23:45", mins)
         self.assertEqual(n, 1)
 
+    def test_invalid_clock_suffix_and_seconds_are_skipped(self):
+        inserted = self.store.backfill_samples("2026-08-07", [
+            self._point("12:34junk"),
+            self._point("12:35:60"),
+            self._point("12:36:5"),
+            self._point("12:37:59"),
+        ])
+
+        self.assertEqual(inserted, 1)
+        self.assertEqual(set(self._minutes()), {"2026-08-07T12:37"})
+
+    def test_only_canonical_calendar_days_are_accepted(self):
+        for day in ("20260807", "2026-W32-5", "2026-08-07junk"):
+            with self.subTest(day=day):
+                self.assertEqual(self.store.backfill_samples(day, [self._point("14:23")]), 0)
+
+        self.assertEqual(self._minutes(), {})
+
     # ---------- duplicate minute keeps existing (live) reading ----------
     def test_duplicate_minute_keeps_live_reading(self):
         con = sqlite3.connect(self.path)
