@@ -128,14 +128,17 @@ def curve_points(data_list: list, *, step_minutes: int = 5) -> list[dict]:
     )
     points = []
     for stamp in times:
-        if len(stamp) < 16:
+        if len(stamp) < 16 or stamp[10] not in (" ", "T"):
             continue
-        clock = stamp[11:16]
+        # Validate the whole SEMS timestamp before reducing it to a chart minute.
         try:
-            minute = int(clock[3:5])
+            timestamp = datetime.fromisoformat(stamp)
         except ValueError:
             continue
-        if step_minutes > 1 and minute % step_minutes:
+        clock = timestamp.strftime("%H:%M")
+        if stamp[:10] != timestamp.date().isoformat() or stamp[11:16] != clock:
+            continue
+        if step_minutes > 1 and timestamp.minute % step_minutes:
             continue
 
         def at(item: str, flip: bool = False) -> Optional[int]:

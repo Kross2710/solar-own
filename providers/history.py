@@ -6,6 +6,7 @@ sẵn đường cong, và dữ liệu sống sót qua restart server.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from contextlib import closing
 from datetime import date, datetime, timedelta
@@ -13,6 +14,9 @@ from pathlib import Path
 from typing import Optional
 
 from providers.base import VN_TZ
+
+
+BACKFILL_CLOCK = re.compile(r"(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?")
 
 
 class HistoryStore:
@@ -354,12 +358,17 @@ class HistoryStore:
         """
         if not points:
             return 0
-        d = str(day)[:10]
+        try:
+            if date.fromisoformat(day).isoformat() != day:
+                return 0
+        except (TypeError, ValueError):
+            return 0
         con = sqlite3.connect(self.path)
         for p in points:
-            t = str(p.get("t") or "")[:5]
-            if len(t) != 5 or t[2] != ":":
+            clock = p.get("t")
+            if not isinstance(clock, str) or not BACKFILL_CLOCK.fullmatch(clock):
                 continue
+            minute = f"{day}T{clock[:5]}"
             # Điểm rỗng hoàn toàn (ngày tương lai / trước khi hệ chạy) -> bỏ, đừng tạo
             # hàng NULL làm gãy biểu đồ.
             if all(p.get(k) is None for k in ("pv", "load", "grid", "soc")):
@@ -367,7 +376,7 @@ class HistoryStore:
             con.execute(
                 "INSERT OR IGNORE INTO samples(minute, ts, pv, load, grid, soc, today) "
                 "VALUES (?,?,?,?,?,?,NULL)",
-                (f"{d}T{t}", f"{d}T{t}:00+07:00",
+                (minute, f"{minute}:00+07:00",
                  p.get("pv"), p.get("load"), p.get("grid"), p.get("soc")),
             )
         con.commit()
