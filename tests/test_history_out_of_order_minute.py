@@ -15,7 +15,9 @@ live-supersedes-gap-fill behaviour are preserved and also covered.
 import os
 import sqlite3
 import unittest
+from contextlib import closing
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from providers.history import HistoryStore
 
@@ -73,6 +75,38 @@ class OutOfOrderMinuteTests(unittest.TestCase):
         row = _sample(self.store, self.minute)
         self.assertEqual(row["ts"], "2026-08-07T23:36:30+07:00")
         self.assertEqual(row["pv"], 300.0)
+
+    def test_competing_writer_can_keep_newer_sample(self):
+        self.store.record(_reading(self.minute + ":05+07:00", pv=50.0))
+        newest = self.minute + ":45+07:00"
+        connect = sqlite3.connect
+        path = self.path
+
+        class InterleavedConnection(sqlite3.Connection):
+            def execute(self, sql, parameters=()):
+                if sql.startswith("INSERT") and "INTO samples(" in sql:
+                    with closing(connect(path)) as writer, writer:
+                        writer.execute(
+                            "UPDATE samples SET ts=?, pv=? WHERE minute=?",
+                            (newest, 450.0, newest[:16]),
+                        )
+                return super().execute(sql, parameters)
+
+        with patch("providers.history.sqlite3.connect",
+                   side_effect=lambda db: connect(db, factory=InterleavedConnection)):
+            self.store.record(_reading(self.minute + ":15+07:00", pv=150.0))
+
+        row = _sample(self.store, self.minute)
+        self.assertEqual((row["ts"], row["pv"]), (newest, 450.0))
+
+    def test_older_reading_still_updates_daily_total(self):
+        self.store.record(_reading(self.minute + ":45+07:00", today=5.0))
+        self.store.record(_reading(self.minute + ":15+07:00", today=6.0))
+
+        with closing(sqlite3.connect(self.path)) as con:
+            daily = con.execute("SELECT kwh FROM daily WHERE day=?", (self.minute[:10],)).fetchone()
+        self.assertEqual(daily, (6.0,))
+        self.assertEqual(_sample(self.store, self.minute)["today"], 5.0)
 
     # ---------- normal replacement preserved (pass on original and fixed) ----------
     def test_newer_reading_replaces_older(self):
