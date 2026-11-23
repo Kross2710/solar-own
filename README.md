@@ -1,12 +1,25 @@
 # Home Solar
 
-A home energy dashboard for a hybrid solar system. It shows live power flow, how much of the house load came from solar versus the grid, the EVN bill, and when to shift loads so less sun is wasted.
+A desktop and mobile dashboard for monitoring a hybrid GoodWe solar system. Follow power as it moves between the solar panels, home, battery, and grid. Review how much of your energy use was covered by solar and the battery, track EVN bills and estimated savings, and use the solar forecast to decide when to run appliances.
 
-The active Next.js app is in `frontend/solar-next`. The deployment entry point `frontend/solar-app` links to it. The previous frontend source is preserved in `frontend/solar-app-legacy`. A FastAPI service polls the inverter, stores history in SQLite, and serves `/api/*`. In development, Next.js proxies those routes to the API, so a phone on the same LAN can open the site without calling `localhost` on itself.
+## Dashboard preview
 
-On startup the API fills missing SEMS history, patches recent sample gaps, rebuilds curtailment, and (when configured) pulls the EVN portal. The same pass runs again every 12 hours. The API also accepts manual sync requests.
+![Animated Home Solar desktop dashboard showing solar power supplying the home and charging the battery](docs/media/overview.gif)
+
+The GIF and screenshots use the built-in demo data. Once the frontend is running, add `?demo=1` to the Overview, History, Money, or Optimization URL to explore these screens without a GoodWe or EVN account. [Open the local Overview demo](http://localhost:3001/?demo=1)
+
+<details>
+<summary>Mobile and Optimization screenshots</summary>
+
+<img src="docs/media/overview-mobile.png" width="300" alt="Mobile Overview with the power-flow diagram, today's energy, and bottom navigation">
+
+![Desktop Optimization screen showing tomorrow's estimated solar surplus, hourly forecast, and battery outlook](docs/media/optimization.png)
+
+</details>
 
 ## Stack
+
+The Next.js app lives in `frontend/solar-next`, with `frontend/solar-app` as the deployment entry point. FastAPI polls the inverter, stores readings in SQLite, and serves `/api/*` through the frontend's proxy.
 
 - Next.js 16, React 19, JavaScript and CSS for the dashboard
 - FastAPI and uvicorn for the API
@@ -26,7 +39,7 @@ On startup the API fills missing SEMS history, patches recent sample gaps, rebui
 | `/` | Live PV, home load, battery, and grid, plus today's energy split |
 | `/history` | Daily generation, month and year totals, self-powered days |
 | `/money` | Cycle savings, projected EVN bill, the last real bill, and the current tariff tier |
-| `/optimization` | Tonight's battery plan, best hours to run loads, wasted sun, and the next days' yield |
+| `/optimization` | Tomorrow's hourly solar surplus forecast, tonight's battery outlook, estimated unused solar, and expected generation |
 | `/settings` | Language, advanced readings, and device notifications |
 | `/assistant` | Rule-based notices and a streaming chat that can look up history before answering |
 
