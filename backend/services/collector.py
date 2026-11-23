@@ -58,9 +58,13 @@ async def snapshot(runtime: AppRuntime) -> dict[str, Any]:
         if sell is not None:
             metrics["today_sell_kwh"] = sell
 
-    metrics["poll_inverval_seconds"] = (
+    # Documented key for the polling cadence; retain the historical misspelling
+    # as a backward-compatible alias so existing consumers keep working.
+    cadence = (
         runtime.poll_interval if metrics.get("source") == "local" else 60
     )
+    metrics["poll_interval_seconds"] = cadence
+    metrics["poll_inverval_seconds"] = cadence
     runtime.latest = metrics
 
     if metrics.get("status") != "offline":
