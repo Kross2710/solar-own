@@ -1,12 +1,19 @@
 import base64
-from unittest import TestCase
+import sqlite3
+from contextlib import closing
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import patch
 
 from providers.cloud_goodwe import (
+    CloudGoodWeProvider,
     curve_points,
     energy_by_day,
     sems_password,
     sems_signature,
 )
+from providers.history import HistoryStore
 
 
 class SemsPlusParsingTests(TestCase):
@@ -59,3 +66,31 @@ class SemsPlusParsingTests(TestCase):
         self.assertEqual(points[0]["batt"], -200)
         self.assertEqual(points[0]["grid"], 700)
         self.assertEqual(points[0]["soc"], 20)
+
+
+class SemsBackfillTests(IsolatedAsyncioTestCase):
+    async def test_backfill_rejects_malformed_raw_timestamps(self) -> None:
+        day = "2026-08-07"
+        statistics = [{"item": "pSystem", "powerData": [
+            {"tp": f"{day} 12:30:60", "power": 1.0},
+            {"tp": f"{day} 12:35junk", "power": 2.0},
+            {"tp": "2026-02-30 12:40:00", "power": 3.0},
+            {"tp": f"{day} 12:45:59", "power": 4.0},
+            {"tp": f"{day}T12:50", "power": 5.0},
+        ]}]
+        provider = CloudGoodWeProvider(account="", password="")
+        self.addAsyncCleanup(provider.close)
+
+        with patch.object(provider, "_statistics", return_value=statistics):
+            curve = await provider.fetch_day_curve(day)
+
+        with TemporaryDirectory() as folder:
+            store = HistoryStore(Path(folder) / "history.db")
+            count = store.backfill_samples(day, curve["points"])
+            with closing(sqlite3.connect(store.path)) as connection:
+                samples = connection.execute(
+                    "SELECT minute, pv FROM samples ORDER BY minute"
+                ).fetchall()
+
+        self.assertEqual(count, 2)
+        self.assertEqual(samples, [(f"{day}T12:45", 4000.0), (f"{day}T12:50", 5000.0)])
