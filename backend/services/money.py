@@ -123,6 +123,14 @@ def monthly_savings(
     return months, total_saved
 
 
+def _payback_eta(today: date, months_left: float) -> str | None:
+    """Return a calendar date only when the projected payback fits in its range."""
+    try:
+        return (today + timedelta(days=months_left * 30.44)).isoformat()
+    except OverflowError:
+        return None
+
+
 def payback_block(
     rows: list[Row],
     today: date,
@@ -164,7 +172,7 @@ def payback_block(
         months_left = 0.0
     elif avg_month > 0:
         months_left = remaining / avg_month
-        eta = (today + timedelta(days=months_left * 30.44)).isoformat()
+        eta = _payback_eta(today, months_left)
 
     # Forward scenarios hold today's tariff/VAT fixed; historical recovery stays dated.
     active = tariff.at(today)
@@ -179,8 +187,11 @@ def payback_block(
     for name, rate in [("completed_months_at_current_tariff", sum(completed)/len(completed) if completed else 0),
                        ("current_cycle_pace", without_solar_proj - bill_proj)]:
         if rate > 0 and remaining > 0:
-            scenarios.append({"method": name, "monthly_savings": round(rate),
-                              "eta": (today + timedelta(days=min(365000, remaining / rate * 30.44))).isoformat()})
+            scenario_eta = _payback_eta(today, remaining / rate)
+            if scenario_eta is not None:
+                scenarios.append({
+                    "method": name, "monthly_savings": round(rate), "eta": scenario_eta,
+                })
 
     return {
         "scenarios": scenarios,
