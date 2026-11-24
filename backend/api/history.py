@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 import datetime
+import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from backend.runtime import AppRuntime, get_runtime
@@ -14,13 +15,15 @@ from backend.services.history_summary import build_summary
 from backend.services.money import build_money
 from providers.base import VN_TZ
 
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter(prefix="/api", tags=["history"])
 
 
 @router.get("/history")
 async def history(
-    hours: int = 12,
+    hours: int = Query(12, ge=1, le=1000),
     runtime: AppRuntime = Depends(get_runtime),
 ) -> JSONResponse:
     return JSONResponse(runtime.store.recent(hours))
@@ -28,7 +31,7 @@ async def history(
 
 @router.get("/daily")
 async def daily(
-    days: int = 30,
+    days: int = Query(30, ge=1, le=1000),
     include_unused_solar: bool = False,
     runtime: AppRuntime = Depends(get_runtime),
 ) -> JSONResponse:
@@ -39,29 +42,27 @@ async def daily(
 
 @router.get("/day")
 async def day(
-    date: str,
+    date: datetime.date = Query(...),
     runtime: AppRuntime = Depends(get_runtime),
 ) -> JSONResponse:
     fetch_day_curve = getattr(runtime.history_provider, "fetch_day_curve", None)
     if not callable(fetch_day_curve):
         return JSONResponse(
-            {"error": "not_supported", "date": date, "points": []}
+            {"error": "not_supported", "date": date.isoformat(), "points": []}
         )
 
+    iso = date.isoformat()
     try:
         fetch = cast(
             Callable[[str], Awaitable[dict[str, Any]]],
             fetch_day_curve,
         )
-        return JSONResponse(await fetch(date))
-    except Exception as error:
-        return JSONResponse(
-            {
-                "error": f"{type(error).__name__}: {error}",
-                "date": date,
-                "points": [],
-            }
-        )
+        return JSONResponse(await fetch(iso))
+    except Exception:
+        # Genuine provider failure: log server-side, return only a generic code.
+        # Never echo the exception type/message (they can leak internals + caller input).
+        logger.error("fetch_day_curve failed for %s", iso, exc_info=True)
+        return JSONResponse({"error": "fetch_failed", "date": iso, "points": []})
 
 
 @router.get("/summary")
