@@ -40,4 +40,13 @@ if __name__ == "__main__":
     )
     print(f"     Listening on    : http://{host}:{port}\n")
 
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="warning",
+        # #34: bound the graceful shutdown so uvicorn force-closes in-flight
+        # requests (SEMS calls, satellite forecast, SSE /api/chat) within 5s
+        # instead of waiting forever and getting SIGKILLed by systemd.
+        timeout_graceful_shutdown=5,
+    )
