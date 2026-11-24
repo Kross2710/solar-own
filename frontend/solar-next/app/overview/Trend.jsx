@@ -59,7 +59,7 @@ export default function Trend({samples}) {
       <div className="sample"><label htmlFor="sample-time">{siteTime(point.time)} ICT</label>
         <input id="sample-time" aria-label={t("Inspect a reading")} type="range" min="0" max={points.length-1} value={index}
           aria-valuetext={siteTime(point.time)} onChange={e=>setPicked(Number(e.target.value))}/>
-        <div>{active.map(([key,label])=><span key={key}>{t(label)} <b>{key==="soc" ? Number.isFinite(point.soc)?point.soc+"%":"—" : power(point[key],lang)}</b></span>)}</div>
+        <div aria-live="polite">{active.map(([key,label])=><span key={key}>{t(label)} <b>{key==="soc" ? Number.isFinite(point.soc)?point.soc+"%":"—" : power(point[key],lang)}</b></span>)}</div>
       </div>
     </>:<p className="no-samples">{lang==="vi"?"Chưa có số liệu "+t(mode).toLowerCase()+".":"No "+mode.toLowerCase()+" readings available."}</p>}
   </section>;

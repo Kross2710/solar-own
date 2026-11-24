@@ -2,7 +2,7 @@ import {pageMetadata} from "../i18n/metadata";
 import {preferences} from "../i18n/preferences";
 import {translator} from "../i18n/translate";
 import Readings from "../shared/Readings";
-import {fmtNum} from "../shared/format";
+import {fmtMoney, fmtNum} from "../shared/format";
 import example from "./demo.json";
 import "./money.css";
 
@@ -55,8 +55,7 @@ function Bills({ bill, history, money, t, lang }) {
 function Dashboard({ data, t, lang, advanced }) {
   const format=value=>fmtNum(value,lang);
   const { cycle, today, total, prev_cycle: previous, payback } = data;
-  const currency = new Intl.NumberFormat("vi-VN", { style: "currency", currency: data.currency || "VND", maximumFractionDigits: 0 });
-  const money = n => Number.isFinite(n) ? currency.format(n) : "—";
+  const money = n => fmtMoney(n,lang,data.currency || "VND");
   const withoutSolar = cycle.saved_now + cycle.bill_now;
   const gridShare = withoutSolar > 0 ? Math.min(100, Math.max(0, 100 * cycle.bill_now / withoutSolar)) : 0;
   const canProject = cycle.days_elapsed >= 3 && Number.isFinite(cycle.bill_proj);
@@ -67,13 +66,16 @@ function Dashboard({ data, t, lang, advanced }) {
       <small>{t("Day ")}{cycle.days_elapsed}{t(" of ")}{cycle.days_in_cycle}</small>
     </div><div className="compare">
       <div><span>{t("Estimated grid bill so far")}</span><b>{money(cycle.bill_now)}</b></div>
-      <div className="bill-track"><i style={{ width: gridShare + "%" }} /></div>
+      <div className="bill-track" aria-hidden="true"><i style={{ width: gridShare + "%" }} /></div>
       <div><span>{t("Estimated bill without solar")}</span><b>{money(withoutSolar)}</b></div>
     </div></section>
     <div className="money-stats">
-      <section><h2>{t("Saved today")}</h2><strong>{money(today?.saved)}</strong><small>{Number.isFinite(today?.selfuse_kwh) ? format(today.selfuse_kwh) + t(" kWh self-powered") : t("Daily reading unavailable")}</small></section>
-      <section><h2>{t("Projected cycle bill")}</h2><strong>{canProject ? money(cycle.bill_proj) : "—"}</strong><small>{canProject ? (cycle.days_elapsed < 5 ? t("Early estimate") : t("At current pace")) + " · " + format(cycle.proj_buy_kwh) + " kWh" : t("Too early to project")}</small></section>
-      <section><h2>{t("Total savings")}</h2><strong>{money(total.saved)}</strong><small>{t("Across ")}{total.months}{t(" recorded months")}</small></section>
+      <section className="panel"><h2>{t("Saved today")}</h2><strong>{money(today?.saved)}</strong><small>{Number.isFinite(today?.selfuse_kwh) ? format(today.selfuse_kwh) + t(" kWh self-powered") : t("Daily reading unavailable")}</small></section>
+      <section className="panel grid-bill"><h2>{t("Projected cycle bill")}</h2><strong>{canProject ? money(cycle.bill_proj) : "—"}</strong>
+        <small>{canProject ? (cycle.days_elapsed < 5 ? t("Early estimate") : t("At current pace")) + " · " + format(cycle.proj_buy_kwh) + " kWh" : t("Too early to project")}</small>
+        <div className="bill-so-far"><span>{t("Estimated grid bill so far")}</span><b>{money(cycle.bill_now)}</b></div>
+      </section>
+      <section className="panel total-savings"><h2>{t("Total savings")}</h2><strong>{money(total.saved)}</strong><small>{t("Across ")}{total.months}{t(" recorded months")}</small></section>
     </div>
     <div className="money-columns"><Tariff lang={lang} t={t} tier={data.tier} tariff={data.tariff} money={money}/>
       <div className="money-stack"><Bills lang={lang} t={t} bill={data.evn_bill} history={data.evn_history} money={money}/>

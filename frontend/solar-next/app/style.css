@@ -1,4 +1,4 @@
-:root{color-scheme:dark;--bg:#111613;--panel:#191f1b;--edge:#343d35;--text:#f3f2e8;--muted:#b1baaf;--sun:#f5bf63;--grid:#8dbadb}
+:root{color-scheme:dark;--bg:#111613;--panel:#212a24;--edge:#465146;--good:#a8d8a6;--text:#f3f2e8;--muted:#b1baaf;--sun:#f5bf63;--grid:#8dbadb}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "Helvetica Neue",Arial,sans-serif;font-variant-numeric:tabular-nums}main{max-width:1110px;padding:0 clamp(15px,4vw,52px) 40px;margin:auto}
 header,.heading,.calhead,.brand,.label,.picker{display:flex;align-items:center}header,.heading,.calhead{justify-content:space-between;gap:12px}
 header{height:72px;border-bottom:1px solid var(--edge)}.status,.caption,.picker span,.week,.scale,footer,.weekday,.totals p{color:var(--muted)}.caption,.status,.picker span{font-size:12px}
@@ -6,7 +6,7 @@ header{height:72px;border-bottom:1px solid var(--edge)}.status,.caption,.picker 
 .totals{display:grid;grid-template-columns:1fr 1fr;margin:24px 0;gap:12px}.totals>div,.panel,.detail{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:clamp(15px,2.4vw,28px)}
 .kwh{--series:var(--sun)}.buy{--series:var(--grid)}.label{gap:8px}.label i{width:18px;height:5px;border-radius:5px;background:var(--series)}strong{display:block;line-height:1.2;font-size:clamp(25px,4vw,45px);font-weight:500;letter-spacing:-.045em;margin:10px 0 5px}strong small{font-size:.44em;color:var(--muted);letter-spacing:0}.totals p,.scale,.weekday,footer{font-size:13px}
 .layout{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(200px,1fr);gap:14px;align-items:start}.calhead{margin-bottom:18px}.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.week{font-size:12px;text-align:center;margin-bottom:4px}
-.day{min-width:0;min-height:53px;padding:6px clamp(3px,1vw,10px);border:1px solid var(--edge);border-radius:7px;text-align:left;font:inherit;color:inherit;background:#202822}.day.missing{background:transparent;color:#929e93;border-color:transparent}.day[aria-pressed=true]{outline:2px solid var(--sun);outline-offset:-2px}.day:hover:not(.missing){background:#303c32;cursor:pointer}.day:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid white;outline-offset:1px}
+.day{min-width:0;min-height:53px;padding:6px clamp(3px,1vw,10px);border:1px solid var(--edge);border-radius:7px;text-align:left;font:inherit;color:inherit;background:#202822}.day.missing{background:transparent;color:#929e93;border-color:transparent}.day[aria-pressed=true]{outline:2px solid var(--sun);outline-offset:-2px}.day:hover:not(.missing){background:#303c32;cursor:pointer}button:focus-visible,select:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:1px}
 .mini,.track{display:block;border-radius:4px;background:#354037;overflow:hidden}.mini{height:3px;margin-top:3px}.mini b,.track b{display:block;background:var(--series);height:100%}.scale{margin-top:14px}.detail{border-top:2px solid var(--sun)}.detail h2{margin-top:10px;font-size:27px}.detail section{margin-top:22px;border-top:1px solid var(--edge);padding-top:18px}.track{height:5px;margin-top:10px}.empty p,footer{margin:12px 0}a{color:var(--sun)}
 @media(max-width:700px){.layout{grid-template-columns:1fr}.detail{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.detail>.caption,.detail>h2,.detail>.weekday{grid-column:1/-1}.calhead h2{font-size:19px}.totals{gap:8px}.totals p{font-size:12px}}
 
@@ -109,6 +109,7 @@ body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-
 }
 
 .rc-bar .prefs-link {
+  min-width: 44px;
   padding-inline: 13px;
   border: 1px solid #ffffff1c;
   background: #ffffff08;

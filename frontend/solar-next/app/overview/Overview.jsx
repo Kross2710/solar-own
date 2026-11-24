@@ -10,6 +10,7 @@ import NavIcon from "../shared/NavIcon";
 
 function useMeter(initial,initialTime,demo) {
   const [state,setState]=useState({data:initial,now:initialTime,connected:Boolean(initial)});
+  const [attempt,setAttempt]=useState(0);
   useEffect(()=>{
     if (demo) return;
     let stopped=false,pending=false;
@@ -26,21 +27,33 @@ function useMeter(initial,initialTime,demo) {
         if (!stopped) setState(prev=>({...prev,now:Date.now(),connected:false}));
       } finally {pending=false;}
     }
+    if (attempt) poll();
     const timer=setInterval(poll,5000);
     document.addEventListener("visibilitychange",poll);
     return ()=>{stopped=true;controller.abort();clearInterval(timer);document.removeEventListener("visibilitychange",poll);};
-  },[demo]);
-  return state;
+  },[demo,attempt]);
+  return {...state,retry:()=>setAttempt(previous=>previous+1)};
 }
 
-export default function Overview({initial,initialTime,demo,average,forecast,saved}) {
+function readingAge(now,time,lang,t) {
+  const minutes=Math.floor(Math.max(0,now-time)/60000);
+  if (minutes<1) return t("Updated just now");
+  const unit=minutes>=1440?"day":minutes>=60?"hour":"minute";
+  const count=Math.floor(minutes/({day:1440,hour:60,minute:1}[unit]));
+  const relative=new Intl.RelativeTimeFormat(lang,{numeric:"always"});
+  return t("Updated")+" "+relative.format(-count,unit);
+}
+
+export default function Overview({initial,initialTime,demo,average,forecast,saved,children}) {
   const {t,advanced,lang}=usePreferences();
   const fmtNum=value=>formatNumber(value,lang);
-  const {data,now,connected}=useMeter(initial,initialTime,demo);
+  const {data,now,connected,retry}=useMeter(initial,initialTime,demo);
   const time=Date.parse(data?.timestamp);
   const online=data?.status==="online" && !data.hasError;
   const fresh=online && connected && Number.isFinite(time) && Math.abs(now-time)<180000;
-  const status=demo || data?.source==="mock" ? "Simulated" : !online ? "Offline" : fresh ? "Live" : "Last reading";
+  const simulated=demo || data?.source==="mock";
+  const status=simulated ? "Simulated" : !online ? "Offline" : fresh ? "Live" : "Last reading";
+  const age=!simulated && Number.isFinite(time) ? readingAge(now,time,lang,t) : null;
   const stamp=Number.isFinite(time) ? (siteDay(now)!==siteDay(time)?siteDay(time)+" · ":"")+siteTime(time)+" ICT" : "Unavailable";
   const meter=online ? data : null;
   const today=Number.isFinite(time) && siteDay(time)===siteDay(now) ? meter : null;
@@ -48,7 +61,7 @@ export default function Overview({initial,initialTime,demo,average,forecast,save
   const share=selfShare(consumed,bought);
   const suffix=demo?"?demo=1":"";
   return <>
-    <div className="ov-top"><Flow data={meter} animate={fresh} status={status} stamp={stamp}/>
+    <div className="ov-top"><Flow data={meter} animate={fresh} status={status} age={age} stamp={stamp}/>
       <section className="panel day-energy"><div className="ov-head"><h2>{t("Today’s energy")}</h2><Link href={"/history"+suffix} aria-label={t("Open energy history")}><NavIcon name="chevronRight"/></Link></div>
         <div className="usage-line"><div className="usage-ring" style={{"--share":(share??0)+"%","--rest":share==null?"var(--edge)":"var(--grid)"}}><b>{share==null?"—":share+"%"}</b></div>
           <div><b>{t("Self-powered")}</b><small>{t("Solar + battery")}</small></div></div>
@@ -59,10 +72,15 @@ export default function Overview({initial,initialTime,demo,average,forecast,save
       [t("PV capacity"),fmtNum(data?.capacity_kw)+" kW"],[t("Battery capacity"),fmtNum(data?.battery_capacity_kwh)+" kWh"],
       [t("Telemetry source"),data?.source],[t("Inverter reading"),stamp]
     ]}/>}
-    {!demo && !online && <p className="ov-offline">{t("Live meter unavailable. ")}<a href="/?demo=1">{t("Preview demo")}</a></p>}
+    {!demo && (!online || !connected) && <div className="ov-offline">
+      <p>{t("Live meter unavailable.")}</p>
+      <button type="button" onClick={retry}>{t("Retry")}</button>
+      <a href="/?demo=1">{t("Preview demo")}</a>
+    </div>}
+    {children}
     <div className="ov-links">
       <Link href={"/optimization"+suffix}><span>{t("Today’s forecast")}</span><b>{fmtNum(forecast)} <small>kWh</small></b><NavIcon name="chevronRight"/></Link>
-      <Link href={"/money"+suffix}><span>{t("Saved today")}</span><b>{fmtMoney(saved)}</b><NavIcon name="chevronRight"/></Link>
+      <Link href={"/money"+suffix}><span>{t("Saved today")}</span><b>{fmtMoney(saved,lang)}</b><NavIcon name="chevronRight"/></Link>
     </div>
   </>;
 }

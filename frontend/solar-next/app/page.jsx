@@ -31,8 +31,9 @@ export default async function Home({searchParams}) {
     }).format(now)}</span></div>
     <Overview initial={publicReading(metrics)} initialTime={now} demo={demo}
       average={past.length ? Math.round(past.reduce((a,b)=>a+b,0)/past.length) : null}
-      forecast={days.find(d=>d.date===today)?.kwh} saved={money?.today?.saved}/>
-    <Trend samples={Array.isArray(history) ? history : []}/>
+      forecast={days.find(d=>d.date===today)?.kwh} saved={money?.today?.saved}>
+      <Trend samples={Array.isArray(history) ? history : []}/>
+    </Overview>
     {!demo && <Refresh interval={60000}/>}
   </main>;
 }

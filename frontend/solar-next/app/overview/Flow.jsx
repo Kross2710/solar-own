@@ -1,13 +1,62 @@
+import {useEffect,useRef,useState} from "react";
 import {usePreferences} from "../i18n/context";
 import {power} from "./telemetry";
 import {fmtNum as formatNumber} from "../shared/format";
 
 const branches = [
-  {key:"solar", label:"Solar", metric:"pv_power_w", intoBus:1, path:"M23 26 H40 Q43 26 43 32 V41 Q43 50 50 50", arrow:[37,26,0]},
-  {key:"home", label:"Home", metric:"load_power_w", intoBus:-1, path:"M77 26 H60 Q57 26 57 32 V41 Q57 50 50 50", arrow:[63,26,180]},
-  {key:"battery", label:"Battery", metric:"battery_power_w", intoBus:-1, path:"M23 74 H40 Q43 74 43 68 V59 Q43 50 50 50", arrow:[37,74,0]},
-  {key:"grid", label:"Grid", metric:"grid_power_w", intoBus:1, path:"M77 74 H60 Q57 74 57 68 V59 Q57 50 50 50", arrow:[63,74,180]}
+  {key:"solar", label:"Solar", metric:"pv_power_w", intoBus:1, side:1},
+  {key:"home", label:"Home", metric:"load_power_w", intoBus:-1, side:-1},
+  {key:"battery", label:"Battery", metric:"battery_power_w", intoBus:-1, side:1},
+  {key:"grid", label:"Grid", metric:"grid_power_w", intoBus:1, side:-1}
 ];
+
+function wireGeometry(map) {
+  const hub=map.querySelector(".hub");
+  return branches.map(branch=>{
+    const {key,side}=branch;
+    const terminal=map.querySelector(".terminal."+key);
+    const x=terminal.offsetLeft+side*terminal.offsetWidth/2;
+    const y=terminal.offsetTop;
+    const endX=hub.offsetLeft-side*hub.offsetWidth/2;
+    const endY=hub.offsetTop;
+    const turnX=(x+endX)/2;
+    const vertical=Math.sign(endY-y);
+    const radius=Math.min(12,Math.abs(endX-x)/4,Math.abs(endY-y)/3);
+    const path=[
+      "M",x,y,"H",turnX-side*radius,
+      "Q",turnX,y,turnX,y+vertical*radius,
+      "V",endY-vertical*radius,
+      "Q",turnX,endY,turnX+side*radius,endY,
+      "H",endX
+    ].join(" ");
+    return {...branch,path,x:turnX,y:(y+endY)/2,angle:vertical*90};
+  });
+}
+
+function Wires({map,data,animate}) {
+  const [geometry,setGeometry]=useState([]);
+  useEffect(()=>{
+    const element=map.current;
+    const update=()=>setGeometry(wireGeometry(element));
+    update();
+    const observer=new ResizeObserver(update);
+    observer.observe(element);
+    return ()=>observer.disconnect();
+  },[map]);
+
+  return <svg className="wires" aria-hidden="true">
+    {geometry.map(({key,metric,intoBus,path,x,y,angle})=>{
+      const flow=data?.[metric]*intoBus;
+      const active=Number.isFinite(flow) && Math.abs(flow)>=20;
+      const rotation=angle+(flow<0?180:0);
+      return <g className={key} key={key}>
+        <path d={path} className="wire"/>
+        {active && <><path className={"conductor "+(animate?"moving":"")} d={path} style={{animationDirection:flow>0?"normal":"reverse"}}/>
+        <path className="arrow" d="M-4 -4 L0 0 -4 4" transform={"translate("+x+" "+y+") rotate("+rotation+")"}/></>}
+      </g>;
+    })}
+  </svg>;
+}
 
 function Icon({name}) {
   const paths = {
@@ -28,24 +77,18 @@ function direction(key, watts) {
   return key==="solar" ? "Generating" : "Consuming";
 }
 
-export default function Flow({data,animate,status,stamp}) {
+export default function Flow({data,animate,status,age,stamp}) {
   const {t,lang}=usePreferences();
   const fmtNum=value=>formatNumber(value,lang);
+  const map=useRef(null);
   const soc = data?.battery_soc;
   const hasCharge = Number.isFinite(soc) && soc >= 0 && soc <= 100;
-  return <section className="panel flow-panel"><div className="ov-head"><h2>{t("Power flow")}</h2><span className={"reading-state "+(animate?"active":"")}>{t(status)}</span></div>
-    <div className="flow-map">
-      <svg className="wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        {branches.map(({key,metric,intoBus,path,arrow})=>{
-          const flow=data?.[metric]*intoBus;
-          const active=Number.isFinite(flow) && Math.abs(flow)>=20;
-          const [x,y,angle]=arrow;
-          return <g className={key} key={key}><path d={path} className="wire"/>
-            {active && <><path className={"conductor "+(animate?"moving":"")} d={path} style={{animationDirection:flow>0?"normal":"reverse"}}/>
-            <path className="arrow" d="M-1.25 -1.4 L1.1 0 -1.25 1.4" transform={`translate(${x} ${y}) rotate(${angle+(flow<0?180:0)})`}/></>}
-          </g>;
-        })}
-      </svg>
+  return <section className="panel flow-panel"><div className="ov-head"><h2>{t("Power flow")}</h2>
+    <div className={"reading-state "+(animate?"active":"")} role="status">
+      <span>{t(status)}</span>{age && <span>{age}</span>}
+    </div></div>
+    <div className="flow-map" ref={map}>
+      <Wires map={map} data={data} animate={animate}/>
       <div className="hub" aria-label={t("Inverter")}><Icon name="inverter"/></div>
       {branches.map(({key,label,metric})=><div className={"terminal "+key} key={key}>
         <div className="device"><Icon name={key}/><span>{t(label)}</span></div>
