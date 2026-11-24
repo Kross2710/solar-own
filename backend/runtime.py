@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,13 @@ class AppRuntime:
     last_sync: dict[str, Any] | None = None
     assistant: Assistant | None = None
     push_alerts: PushAlerts | None = None
+    # EVN reconciliation source state (providers/evn_portal.py).
+    #   evn_last_sync      — last sync attempt (success or failure), for /api/status.
+    #   evn_last_error     — last error message, or None when healthy.
+    #   evn_failure_since  — when the current failure streak started (success -> None).
+    evn_last_sync: datetime | None = None
+    evn_last_error: str | None = None
+    evn_failure_since: datetime | None = None
 
     @property
     def history_source(self) -> str | None:

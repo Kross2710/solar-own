@@ -55,6 +55,8 @@ async def status(runtime: AppRuntime = Depends(get_runtime)) -> JSONResponse:
             "enabled": bool(((runtime.config.get("evn") or {}).get("portal") or {}).get("enabled")),
             "last_day": evn_days[-1]["day"] if evn_days else None,
             "bills": store.evn_counts()["bills"],
+            "last_sync": runtime.evn_last_sync.isoformat() if runtime.evn_last_sync else None,
+            "last_error": runtime.evn_last_error,
         },
         "forecast": {
             "ready": forecaster.ready,
