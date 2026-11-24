@@ -129,3 +129,167 @@ class ApiSmokeTests(TestCase):
         self.assertEqual(hourly["currency"], "VND")
         self.assertEqual(len(hourly["hours"]), 24)
         self.assertIsNone(hourly["marginal"])  # no purchase data in the current cycle
+
+
+class ThrowingProvider(Provider):
+    """Provider whose day-curve fetch always fails — exercises the error path."""
+
+    name = "throwing"
+
+    async def get_metrics(self) -> Metrics:
+        return Metrics(
+            source="throwing",
+            status="online",
+            pv_power_w=1,
+            load_power_w=1,
+            battery_soc=50,
+        )
+
+    async def fetch_day_curve(self, day: str) -> dict:
+        raise ValueError(f"boom from {day}")
+
+
+class FailingMetricsProvider(Provider):
+    """Provider whose get_metrics always fails — exercises /api/metrics error path."""
+
+    name = "failing"
+
+    async def get_metrics(self) -> Metrics:
+        raise RuntimeError("metrics backend down")
+
+
+class ApiParameterValidationTests(TestCase):
+    """Issue #32: /api params must be validated, not echoed or silently clamped."""
+
+    def setUp(self) -> None:
+        provider = FakeProvider()
+        runtime = AppRuntime(
+            root=Path("."),
+            config={"source": "mock", "currency": "VND"},
+            live_provider=provider,
+            history_provider=provider,
+            poll_interval=5,
+            store=FakeStore(),  # type: ignore[arg-type]
+            tariff=EvnTariff(),
+        )
+        self.client_context = TestClient(
+            create_app(runtime, mount_static=False)
+        )
+        self.client = self.client_context.__enter__()
+
+    def tearDown(self) -> None:
+        self.client_context.__exit__(None, None, None)
+
+    # --- /api/day date validation ---
+
+    def test_valid_date_ok(self) -> None:
+        resp = self.client.get("/api/day?date=2026-09-01")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["error"], "not_supported")
+
+    def test_garbage_date_is_422(self) -> None:
+        resp = self.client.get("/api/day?date=notadate")
+        self.assertEqual(resp.status_code, 422)
+        # No Python exception name or message leaked into the public payload.
+        self.assertNotIn("ValueError", resp.text)
+        self.assertNotIn("isoformat", resp.text)
+
+    def test_bad_calendar_date_is_422(self) -> None:
+        # 2026-02-30 is well-formed but not a real calendar date.
+        resp = self.client.get("/api/day?date=2026-02-30")
+        self.assertEqual(resp.status_code, 422)
+        self.assertNotIn("ValueError", resp.text)
+        self.assertNotIn("day is out of range", resp.text)
+
+    # --- /api/history hours bounds ---
+
+    def test_hours_zero_is_422(self) -> None:
+        self.assertEqual(self.client.get("/api/history?hours=0").status_code, 422)
+
+    def test_hours_negative_is_422(self) -> None:
+        self.assertEqual(self.client.get("/api/history?hours=-5").status_code, 422)
+
+    def test_hours_over_limit_is_422(self) -> None:
+        self.assertEqual(self.client.get("/api/history?hours=99999").status_code, 422)
+
+    def test_hours_within_bounds_ok(self) -> None:
+        self.assertEqual(self.client.get("/api/history?hours=1").status_code, 200)
+        self.assertEqual(self.client.get("/api/history?hours=24").status_code, 200)
+        self.assertEqual(self.client.get("/api/history?hours=1000").status_code, 200)
+
+    # --- /api/daily days bounds ---
+
+    def test_days_zero_is_422(self) -> None:
+        self.assertEqual(self.client.get("/api/daily?days=0").status_code, 422)
+
+    def test_days_over_limit_is_422(self) -> None:
+        self.assertEqual(self.client.get("/api/daily?days=99999").status_code, 422)
+
+    def test_days_within_bounds_ok(self) -> None:
+        self.assertEqual(self.client.get("/api/daily?days=1").status_code, 200)
+        self.assertEqual(self.client.get("/api/daily?days=30").status_code, 200)
+        self.assertEqual(self.client.get("/api/daily?days=1000").status_code, 200)
+
+
+class ApiDayErrorHandlingTests(TestCase):
+    """Issue #32: a genuine provider failure returns a generic code, not an echo."""
+
+    def setUp(self) -> None:
+        provider = ThrowingProvider()
+        runtime = AppRuntime(
+            root=Path("."),
+            config={"source": "mock", "currency": "VND"},
+            live_provider=provider,
+            history_provider=provider,
+            poll_interval=5,
+            store=FakeStore(),  # type: ignore[arg-type]
+            tariff=EvnTariff(),
+        )
+        self.client_context = TestClient(
+            create_app(runtime, mount_static=False)
+        )
+        self.client = self.client_context.__enter__()
+
+    def tearDown(self) -> None:
+        self.client_context.__exit__(None, None, None)
+
+    def test_provider_failure_returns_generic_error(self) -> None:
+        resp = self.client.get("/api/day?date=2026-09-01")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["error"], "fetch_failed")
+        # The caller's input and the internal exception must not leak out.
+        self.assertNotIn("ValueError", resp.text)
+        self.assertNotIn("boom", resp.text)
+        self.assertEqual(body["date"], "2026-09-01")
+        self.assertEqual(body["points"], [])
+
+
+class ApiMetricsErrorHandlingTests(TestCase):
+    """Issue #32 (related): /api/metrics must not echo the internal exception."""
+
+    def setUp(self) -> None:
+        provider = FailingMetricsProvider()
+        runtime = AppRuntime(
+            root=Path("."),
+            config={"source": "mock", "currency": "VND"},
+            live_provider=provider,
+            history_provider=provider,
+            poll_interval=5,
+            store=FakeStore(),  # type: ignore[arg-type]
+            tariff=EvnTariff(),
+        )
+        self.client_context = TestClient(
+            create_app(runtime, mount_static=False)
+        )
+        self.client = self.client_context.__enter__()
+
+    def tearDown(self) -> None:
+        self.client_context.__exit__(None, None, None)
+
+    def test_metrics_failure_returns_generic_error(self) -> None:
+        resp = self.client.get("/api/metrics")
+        body = resp.json()
+        self.assertEqual(body["error"], "snapshot_failed")
+        self.assertNotIn("RuntimeError", resp.text)
+        self.assertNotIn("metrics backend down", resp.text)
