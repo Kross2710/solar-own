@@ -264,23 +264,38 @@ class HistoryStore:
         - Lần đầu trong ngày: seed mốc = công tơ hiện tại TRỪ phần buy đã ghi cho hôm nay
           (từ SEMS/`daily.buy`) -> mua hôm nay khớp NGAY cả khi server khởi động giữa ngày
           (vd deploy lúc trưa). Bán seed 0 (VN không FIT, bán ~0).
-        Trả (today_buy, today_sell) kWh (>=0), hoặc None nếu không có số công tơ.
+        - Công tơ khởi động NỬA NGÀY: lần đọc đầu thiếu một chiều -> mốc NULL. Chiều nào
+          BẮT ĐẦU có số sau được SEED giống lần đầu (mua TRỪ buy hôm nay, bán = 0) và ghi
+          vào mốc bằng upsert COALESCE -> không ghi đè chiều đã có. Đường đọc đủ mốc
+          (both imp0/exp0 đã có) không hỏi daily, không ghi -> vẫn nhẹ.
+        Trả (today_buy, today_sell) kWh (>=0), với None cho chiều thiếu số công tơ.
         """
         if cur_imp is None and cur_exp is None:
             return (None, None)
-        con = sqlite3.connect(self.path)
-        row = con.execute("SELECT imp0, exp0 FROM meter_baseline WHERE day=?", (day,)).fetchone()
-        if row is None:
-            dr = con.execute("SELECT buy FROM daily WHERE day=?", (day,)).fetchone()
-            seed_buy = float(dr[0]) if (dr and dr[0] is not None) else 0.0
-            imp0 = None if cur_imp is None else float(cur_imp) - seed_buy
-            exp0 = None if cur_exp is None else float(cur_exp)
-            con.execute("INSERT OR REPLACE INTO meter_baseline(day, imp0, exp0) VALUES (?,?,?)",
-                        (day, imp0, exp0))
-            con.commit()
-        else:
-            imp0, exp0 = row
-        con.close()
+        with closing(sqlite3.connect(self.path)) as con, con:
+            row = con.execute("SELECT imp0, exp0 FROM meter_baseline WHERE day=?", (day,)).fetchone()
+            imp0, exp0 = row if row is not None else (None, None)
+            seed_import = imp0 is None and cur_imp is not None
+            seed_export = exp0 is None and cur_exp is not None
+            if seed_import or seed_export:
+                seed_buy = 0.0
+                if seed_import:
+                    day_row = con.execute("SELECT buy FROM daily WHERE day=?", (day,)).fetchone()
+                    if day_row and day_row[0] is not None:
+                        seed_buy = float(day_row[0])
+                import_baseline = float(cur_imp) - seed_buy if seed_import else None
+                export_baseline = float(cur_exp) if seed_export else None
+                con.execute(
+                    """INSERT INTO meter_baseline(day, imp0, exp0) VALUES (?,?,?)
+                       ON CONFLICT(day) DO UPDATE SET
+                           imp0=COALESCE(meter_baseline.imp0, excluded.imp0),
+                           exp0=COALESCE(meter_baseline.exp0, excluded.exp0)""",
+                    (day, import_baseline, export_baseline),
+                )
+                # Dùng mốc SQLite đã lưu nếu một kết nối khác kịp ghi trước.
+                imp0, exp0 = con.execute(
+                    "SELECT imp0, exp0 FROM meter_baseline WHERE day=?", (day,)
+                ).fetchone()
         buy = None if (cur_imp is None or imp0 is None) else max(0.0, round(float(cur_imp) - float(imp0), 1))
         sell = None if (cur_exp is None or exp0 is None) else max(0.0, round(float(cur_exp) - float(exp0), 1))
         return (buy, sell)
