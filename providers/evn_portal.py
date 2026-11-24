@@ -79,6 +79,14 @@ def _cycle(s) -> Optional[str]:
         return None
 
 
+class EvnAuthError(RuntimeError):
+    """Cổng EVN từ chối đăng nhập (sai mật khẩu / bị chặn / form đổi).
+
+    Phân biệt với lỗi mạng (timeout, kết nối) để vòng sync không cố đăng nhập
+    lại bằng cùng một tài khoản vô nghĩa — người dùng cần sửa mật khẩu.
+    """
+
+
 class EvnPortal:
     name = "evnhcmc"
 
@@ -108,7 +116,7 @@ class EvnPortal:
             self._logged_in = True
             return True
         self._logged_in = False
-        raise RuntimeError(f"EVN login thất bại: {j.get('alert') or j.get('state')}")
+        raise EvnAuthError(f"EVN login thất bại: {j.get('alert') or j.get('state')}")
 
     async def _post(self, path: str, data: dict, _retry: bool = True) -> dict:
         """POST form + tự login lại 1 lần nếu hết phiên (error_login)."""

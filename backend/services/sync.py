@@ -15,9 +15,16 @@ from typing import Any, Awaitable, Callable, cast
 from backend.runtime import AppRuntime
 from backend.services.curtailment import backfill_curtailment, backfill_satellite
 from providers.base import VN_TZ
+from providers.evn_portal import EvnAuthError
 
 
 SYNC_INTERVAL_SECONDS = 12 * 3600
+# Backoff when EVN fails to sync:
+#   transient (network / session / EVN slow) -> retry soon; most failures clear up.
+#   auth ("EVN login thất bại") -> retry hourly so a credential fix is caught fast,
+#     instead of waiting 12h, but don't hammer the portal with the same bad creds.
+EVN_TRANSIENT_BACKOFF = 20 * 60
+EVN_AUTH_BACKOFF = 60 * 60
 # Give the first poll (provider login) this long before syncing anyway.
 STARTUP_WAIT_SECONDS = 60
 DEFAULT_FULL_MONTHS = 18
@@ -189,6 +196,12 @@ async def evn_sync_once(runtime: AppRuntime, portal) -> dict[str, int]:
     return await portal.sync_recent(store, days=max(EVN_RECENT_DAYS, gap + 7))
 
 
+def _evn_backoff(error: Exception) -> int:
+    """Retry delay after an EVN failure: slower for auth errors, which won't clear
+    by retrying the same bad credentials (unlike a transient network/session error)."""
+    return EVN_AUTH_BACKOFF if isinstance(error, EvnAuthError) else EVN_TRANSIENT_BACKOFF
+
+
 async def evn_loop(runtime: AppRuntime) -> None:
     portal = build_evn_portal(runtime.config)
     if portal is None:
@@ -198,16 +211,31 @@ async def evn_loop(runtime: AppRuntime) -> None:
         while True:
             try:
                 result = await evn_sync_once(runtime, portal)
+                runtime.evn_last_sync = datetime.now(VN_TZ)
+                runtime.evn_last_error = None
+                runtime.evn_failure_since = None
                 print(
                     f"  [sync] EVN {result['days']} days + {result['bills']} bills; "
                     f"{runtime.store.evn_counts()} stored",
                     flush=True,
                 )
+                # Healthy portal: keep the 12h cadence between polls instead of
+                # tight-looping. Only failures back off short and retry fast.
+                await asyncio.sleep(SYNC_INTERVAL_SECONDS)
             except asyncio.CancelledError:
                 raise
             except Exception as error:
-                print(f"  [sync] EVN: {type(error).__name__}: {error}", flush=True)
-            await asyncio.sleep(SYNC_INTERVAL_SECONDS)
+                runtime.evn_last_sync = datetime.now(VN_TZ)
+                runtime.evn_last_error = f"{type(error).__name__}: {error}"[:200]
+                # Start (or continue) the failure streak so the "dead for N days"
+                # notice can measure how long EVN has been down.
+                if runtime.evn_failure_since is None:
+                    runtime.evn_failure_since = runtime.evn_last_sync
+                kind = "auth" if isinstance(error, EvnAuthError) else "transient"
+                print(f"  [sync] EVN ({kind}) {error}", flush=True)
+                # Auth failures won't clear by retrying the same bad credentials, so
+                # back off slower than a transient network/session error.
+                await asyncio.sleep(_evn_backoff(error))
     finally:
         try:
             await portal.close()

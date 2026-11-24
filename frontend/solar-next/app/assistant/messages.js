@@ -33,6 +33,8 @@ export function noticeView(notice, lang) {
                 return {title:"Sắp tới bậc giá "+d.tier,detail:"Còn "+fmtNum(d.to_next_kwh,lang)+" kWh trước khi giá tăng lên "+fmtMoney(d.price)+"/kWh.",ask:"Còn "+fmtNum(d.to_next_kwh,lang)+" kWh trước bậc giá tiếp theo. Làm sao hạn chế mua điện?"};
             case "wasted_sun_up":
                 return {title:"Khoảng "+fmtNum(d.lost_kwh,lang)+" kWh chưa tận dụng",detail:"Tuần trước ước tính "+fmtNum(d.prev_kwh,lang)+" kWh.",ask:"Tuần này còn khoảng "+fmtNum(d.lost_kwh,lang)+" kWh điện mặt trời chưa tận dụng. Tôi nên dời tải lúc nào?"};
+            case "evn_sync_dead":
+                return {title:"Nguồn EVN đã ngừng "+d.days+" ngày",detail:"Lý do lần cuối: "+d.error.slice(0,80)+". Bảng điều khiển vẫn chạy trên số liệu gần nhất.",ask:"Nguồn EVN ngừng gửi số liệu "+d.days+" ngày rồi. Tôi nên kiểm tra gì?"};
         }
     }
     switch (notice.kind) {
@@ -72,6 +74,13 @@ export function noticeView(notice, lang) {
                 title: `~${fmtNum(notice.data.lost_kwh)} kWh of sun wasted this week`,
                 detail: `Up from ~${fmtNum(notice.data.prev_kwh)} kWh the week before — estimated curtailed energy${notice.data.full_at ? `. Battery usually full by ${notice.data.full_at}` : ""}.`,
                 ask: `This week about ${fmtNum(notice.data.lost_kwh)} kWh of sunshine went unused, up from ${fmtNum(notice.data.prev_kwh)} kWh. How can I use more of it?`,
+            };
+        case "evn_sync_dead":
+            return {
+                icon: "fa-plug-circle-xmark",
+                title: `EVN data source has been down for ${notice.data.days} days`,
+                detail: `Last error: ${notice.data.error.slice(0,80)}. The dashboard is still running on the last readings it received.`,
+                ask: `The EVN data source has been down for ${notice.data.days} days. What should I check?`,
             };
     }
 }

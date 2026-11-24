@@ -12,6 +12,7 @@ from backend.services import notices as notices_service
 from backend.services import sync as sync_service
 from providers.base import Metrics, Provider, VN_TZ
 from providers.evn import EvnTariff
+from providers.evn_portal import EvnAuthError
 from providers.history import HistoryStore
 
 
@@ -144,6 +145,30 @@ class SyncOnceTests(TempStoreCase):
         gap = (datetime.now(VN_TZ).date() - date(2026, 9, 1)).days
         self.assertEqual(calls[1][1], max(sync_service.EVN_RECENT_DAYS, gap + 7))
 
+    def test_evn_backoff_is_slower_for_auth_than_transient(self) -> None:
+        # Transient (network/session) -> retry soon; auth (bad creds) -> retry hourly,
+        # but never as slowly as the normal 12h sync, and always faster than that.
+        self.assertEqual(
+            sync_service._evn_backoff(RuntimeError("connection refused")),
+            sync_service.EVN_TRANSIENT_BACKOFF,
+        )
+        self.assertEqual(
+            sync_service._evn_backoff(EvnAuthError("EVN login thất bại")),
+            sync_service.EVN_AUTH_BACKOFF,
+        )
+        self.assertLess(sync_service.EVN_TRANSIENT_BACKOFF, sync_service.EVN_AUTH_BACKOFF)
+        self.assertLess(sync_service.EVN_AUTH_BACKOFF, sync_service.SYNC_INTERVAL_SECONDS)
+
+    def test_evn_sync_failure_propagates_to_loop(self) -> None:
+        class FailingPortal:
+            async def backfill(self, store) -> dict:
+                raise EvnAuthError("EVN login thất bại")
+
+        runtime = _runtime(self.store, FakeSems())
+
+        with self.assertRaises(EvnAuthError):
+            asyncio.run(sync_service.evn_sync_once(runtime, FailingPortal()))
+
 
 class NoticeTests(TempStoreCase):
     now = datetime(2026, 9, 20, 12, 0, tzinfo=VN_TZ)
@@ -187,6 +212,50 @@ class NoticeTests(TempStoreCase):
         runtime.latest = {"status": "online"}
         notices_service.check_offline(runtime, watch, later)
         self.assertEqual(self._kinds(later), [])
+
+    def _evn_failure(self, since: datetime,
+                     error: str = "RuntimeError: EVN login thất bại") -> AppRuntime:
+        runtime = self._runtime()
+        runtime.evn_last_error = error
+        runtime.evn_failure_since = since
+        runtime.evn_last_sync = since
+        return runtime
+
+    def test_evn_dead_notice_fires_after_threshold(self) -> None:
+        since = self.now - timedelta(days=3)  # fixed: past the 2-day threshold
+        runtime = self._evn_failure(since)
+
+        self.assertEqual(notices_service.check_evn(runtime, self.now), 1)
+        self.assertEqual(self._kinds(self.now), ["evn_sync_dead"])
+        notice = self.store.notices_recent(1)[0]
+        self.assertEqual(notice["data"]["days"], 3)
+        self.assertEqual(notices_service.check_evn(runtime, self.now), 0)
+
+    def test_evn_dead_notice_quiet_before_threshold(self) -> None:
+        since = self.now - timedelta(days=1)  # fixed: before the 2-day threshold
+        self.assertEqual(notices_service.check_evn(self._evn_failure(since), self.now), 0)
+        self.assertEqual(self._kinds(), [])
+
+    def test_evn_dead_notice_clears_when_recovered(self) -> None:
+        since = self.now - timedelta(days=3)
+        runtime = self._evn_failure(since)
+        self.assertEqual(notices_service.check_evn(runtime, self.now), 1)
+        self.assertEqual(self._kinds(self.now), ["evn_sync_dead"])
+
+        # Recovered: no error -> stale notice dismissed.
+        runtime.evn_last_error = None
+        runtime.evn_failure_since = None
+        self.assertEqual(notices_service.check_evn(runtime, self.now), 0)
+        self.assertEqual(self._kinds(self.now), [])
+
+    def test_evn_dead_notice_refires_daily_while_persistent(self) -> None:
+        since = self.now - timedelta(days=3)
+        runtime = self._evn_failure(since)
+
+        self.assertEqual(notices_service.check_evn(runtime, self.now), 1)
+        # Next day the dkey advances, so a long outage keeps reminding (bounded by TTL).
+        self.assertEqual(notices_service.check_evn(runtime, self.now + timedelta(days=1)), 1)
+        self.assertEqual(len(self._kinds(self.now + timedelta(days=1))), 2)
 
     def _curtailment(self, before: float, this_week: float) -> None:
         yesterday = self.now.date() - timedelta(days=1)

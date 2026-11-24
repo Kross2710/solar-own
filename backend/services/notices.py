@@ -38,8 +38,11 @@ TIER_WARN_INDEX = 3
 CURTAIL_RATIO = 1.5
 CURTAIL_MIN_DELTA_KWH = 15.0
 CURTAIL_MIN_DAYS = 12
+# EVN reconciliation source (real meter + bills) has been failing this many days.
+EVN_DEAD_DAYS = 2
 
 OFFLINE = "offline"
+EVN_SYNC_DEAD = "evn_sync_dead"
 
 
 @dataclass
@@ -68,6 +71,29 @@ def check_offline(runtime: AppRuntime, watch: OfflineWatch, now: datetime) -> in
         return 0
     return int(store.notice_add(
         OFFLINE, _stamp(watch.since), "warn", {"since": _stamp(watch.since)}, _stamp(now + OFFLINE_TTL)
+    ))
+
+
+def check_evn(runtime: AppRuntime, now: datetime) -> int:
+    """EVN reconciliation source (real meter readings + bills) has been down for days.
+
+    Distinct from the short-lived transient errors the sync loop retries: only fires
+    once the failure streak has lasted EVN_DEAD_DAYS, and clears when EVN recovers.
+    """
+    if not runtime.evn_last_error or runtime.evn_failure_since is None:
+        # Recovered (or never failing): drop any stale EVN-dead notices.
+        for notice in runtime.store.notices_recent(10, active_at=_stamp(now)):
+            if notice["kind"] == EVN_SYNC_DEAD:
+                runtime.store.notice_dismiss(notice["id"])
+        return 0
+    days = (now - runtime.evn_failure_since).days
+    if days < EVN_DEAD_DAYS:
+        return 0
+    # dkey changes daily so a persistent outage keeps reminding (bounded by NOTICE_TTL).
+    return int(runtime.store.notice_add(
+        EVN_SYNC_DEAD, f"d{days}", "warn",
+        {"days": days, "error": runtime.evn_last_error},
+        _stamp(now + NOTICE_TTL),
     ))
 
 
@@ -158,6 +184,7 @@ def check_notices(runtime: AppRuntime, watch: OfflineWatch, now: datetime | None
         lambda: check_night_load(runtime, now),
         lambda: check_money(runtime, now),
         lambda: check_curtailment(runtime, now),
+        lambda: check_evn(runtime, now),
     ):
         try:
             added += rule()
