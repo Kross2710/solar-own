@@ -207,7 +207,11 @@ def feature_row(day: str, w: dict) -> list:
 
 
 def build_matrix(rows: list):
-    """rows=[{day,kwh,rad,...}] (đã ghép) -> (dates, X, y) numpy."""
+    """rows=[{day,kwh,rad,...}] (đã ghép) -> (dates, X, y) numpy.
+
+    X LUÔN 2 chiều (n dòng × len(FEATURES)): không có dòng nào -> shape (0, 12),
+    không phải (0,). Ma trận 1 chiều làm mọi phép theo cột (`axis=0`) hỏng âm thầm.
+    """
     dates, X, y = [], [], []
     for r in rows:
         if r.get("kwh") is None or r.get("rad") is None:
@@ -215,8 +219,37 @@ def build_matrix(rows: list):
         dates.append(r["day"])
         X.append(feature_row(r["day"], r))
         y.append(float(r["kwh"]))
+    if not X:
+        return dates, np.empty((0, len(FEATURES)), dtype=float), np.array(y, dtype=float)
     X = np.array([[np.nan if v is None else v for v in row] for row in X], dtype=float)
     return dates, X, np.array(y, dtype=float)
+
+
+def column_means(X) -> "np.ndarray":
+    """Trung bình TỪNG CỘT trên các giá trị có thật; 0.0 cho cột trống hẳn.
+
+    Thay np.nanmean: nanmean phát `RuntimeWarning: Mean of empty slice` cho cột toàn
+    NaN (đặc trưng thời tiết chưa nạp dữ liệu) và trả NaN. Ở đây cột trống trả 0.0
+    có chủ đích, không warning, và gọi được cả với ma trận 0 dòng.
+    """
+    means = np.zeros(X.shape[1], dtype=float)
+    if X.ndim != 2 or X.shape[0] == 0:
+        return means
+    valid = np.isfinite(X)
+    counts = valid.sum(axis=0)
+    sums = np.where(valid, X, 0.0).sum(axis=0)
+    filled = counts > 0
+    means[filled] = sums[filled] / counts[filled]
+    return means
+
+
+def empty_feature_columns(X) -> list[int]:
+    """Chỉ số cột không có lấy một giá trị hữu hạn (đặc trưng thiếu dữ liệu cả tập)."""
+    if X.ndim != 2:
+        return []
+    if X.shape[0] == 0:
+        return list(range(X.shape[1]))
+    return [int(j) for j in range(X.shape[1]) if not np.isfinite(X[:, j]).any()]
 
 
 # ------------------------------- mô hình -------------------------------
@@ -231,8 +264,7 @@ class Ridge:
         self.alpha = float(alpha)
 
     def fit(self, X, y):
-        self.mu_ = np.nanmean(X, axis=0)
-        self.mu_ = np.where(np.isfinite(self.mu_), self.mu_, 0.0)
+        self.mu_ = column_means(X)
         Xi = self._impute(X)
         self.xmean_ = Xi.mean(axis=0)
         self.xstd_ = Xi.std(axis=0)
@@ -295,8 +327,7 @@ class DayQualityClassifier:
     theo scale nên không cần chuẩn hoá). Chỉ chạy khi có sklearn."""
 
     def fit(self, X, lab):
-        self.mu_ = np.nanmean(X, axis=0)
-        self.mu_ = np.where(np.isfinite(self.mu_), self.mu_, 0.0)
+        self.mu_ = column_means(X)
         self.clf_ = RandomForestClassifier(
             n_estimators=200, max_depth=4, class_weight="balanced",
             random_state=0, n_jobs=1).fit(self._imp(X), lab)
@@ -503,6 +534,9 @@ class SolarForecaster:
         self.clf_quality = None    # confusion matrix + macro-F1 (walk-forward) cho tab dev
         self.day_clf = None        # classifier huấn luyện trên TOÀN bộ -> phân loại ngày tới
         self.qual_th = None        # [P33, P67] sản lượng -> ngưỡng phân lớp
+        # Tên đặc trưng KHÔNG có dữ liệu nào trong toàn bộ tập train (impute về 0 ->
+        # đặc trưng bị vô hiệu). Rỗng = mọi đặc trưng đều có dữ liệu.
+        self.empty_features: list = []
         # State của lần fit gần nhất cho backtest_for() (trang "Độ chính xác": chọn model xem
         # thử). Gói TẤT CẢ vào MỘT tuple gán nguyên khối trong fit() -> backtest_for() đọc đúng
         # 1 lần là có snapshot nhất quán, KHÔNG cần khoá (xem docstring backtest_for).
@@ -530,6 +564,9 @@ class SolarForecaster:
             self.ready = False
             return False
         warmup = max(14, min(30, len(y) // 3))
+        # Đặc trưng không có dữ liệu cả tập: impute về 0 -> mô hình không dùng được nó.
+        # Ghi rõ để quality/API cho thấy, thay vì im lặng (xem column_means).
+        self.empty_features = [FEATURES[j] for j in empty_feature_columns(X)]
         res = bake_off(dates, X, y, warmup=warmup)
         chosen = res["chosen"] or res["best"]
         cands = _candidates()
@@ -558,7 +595,8 @@ class SolarForecaster:
                  "pred": round(min(max(float(yp[i]), 0.0), self.cap), 1)}
                 for i in range(len(yt))
             ]
-            backtest_cache[self.model_name] = self._accuracy_result(self.model_name, dates, y, yt, yp, res["warmup"])
+            backtest_cache[self.model_name] = self._accuracy_result(
+                self.model_name, dates, y, yt, yp, res["warmup"], self.empty_features)
         except Exception:
             self.backtest = []
 
@@ -599,6 +637,8 @@ class SolarForecaster:
             "cv_best_model": best.get("name"),
             "cv_best_mae": round(best.get("mae", 0.0), 2),
             "weather_responsive": (chosen.get("resp", 0.0) or 0.0) > 0,
+            # Đặc trưng thiếu dữ liệu cả tập train (đã impute về 0). Rỗng = đủ dữ liệu.
+            "empty_features": list(self.empty_features),
             "skill_vs_climatology": skill(climo),
             "skill_vs_heuristic": skill(heur),
             # Điểm CV đo trên bức xạ ERA5 (archive); lúc phục vụ dùng bức xạ dự báo
@@ -607,7 +647,10 @@ class SolarForecaster:
             "board": res["board"],
         }
         # Publish the data snapshot only after its selected-model cache is complete.
-        self._bt_state = (dates, X, y, res["warmup"], self.cap, backtest_cache)
+        # empty_features đi cùng snapshot: backtest_for() phải báo đúng đặc trưng trống
+        # của THẾ HỆ ma trận nó đang chấm điểm, không phải của lần fit sau.
+        self._bt_state = (dates, X, y, res["warmup"], self.cap, backtest_cache,
+                          list(self.empty_features))
         self.ready = True
         return True
 
@@ -626,7 +669,7 @@ class SolarForecaster:
         state = self._bt_state          # <- đọc 1 lần; mọi thứ dưới đây dùng snapshot này
         if not self.ready or state is None:
             return None
-        dates, X, y, warmup, _cap, cache = state
+        dates, X, y, warmup, _cap, cache, empty_features = state
         hit = cache.get(name)
         if hit is not None:
             return hit
@@ -639,12 +682,12 @@ class SolarForecaster:
             yt, yp = walk_forward(X, y, entry[0], warmup)
         else:
             return None
-        out = self._accuracy_result(name, dates, y, yt, yp, warmup)
+        out = self._accuracy_result(name, dates, y, yt, yp, warmup, empty_features)
         cache[name] = out               # cache của ĐÚNG thế hệ đã đọc (không đụng self)
         return out
 
     @staticmethod
-    def _accuracy_result(name, dates, y, yt, yp, warmup) -> dict:
+    def _accuracy_result(name, dates, y, yt, yp, warmup, empty_features=None) -> dict:
         bdates = dates[warmup:]
         m = metrics(yt, yp)
         _, baseline = _wf_climatology(y, warmup)
@@ -655,6 +698,10 @@ class SolarForecaster:
             "n_train": len(y), "warmup": warmup, "n_test": len(yt),
             "target": "measured_output", "evaluation": "walk-forward model-selection backtest",
             "weather": "historical archive, not stored forecast-time weather",
+            # Đặc trưng thời tiết KHÔNG có dữ liệu nào trong tập train (impute về 0 ->
+            # mô hình không dùng được nó). Trang "Độ chính xác" phải thấy khoảng trống
+            # này thay vì đoán từ MAE. Rỗng = mọi đặc trưng đều có dữ liệu.
+            "empty_features": list(empty_features or []),
             "baseline_mae": round(baseline_metrics["mae"], 2),
             "skill_vs_baseline": None if not baseline_metrics["mae"] else round(1 - m["mae"] / baseline_metrics["mae"], 4),
             "mae": round(m["mae"], 2), "rmse": round(m["rmse"], 2),
