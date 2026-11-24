@@ -219,11 +219,14 @@ async def evn_loop(runtime: AppRuntime) -> None:
                     f"{runtime.store.evn_counts()} stored",
                     flush=True,
                 )
+                # Healthy portal: keep the 12h cadence between polls instead of
+                # tight-looping. Only failures back off short and retry fast.
+                await asyncio.sleep(SYNC_INTERVAL_SECONDS)
             except asyncio.CancelledError:
                 raise
             except Exception as error:
                 runtime.evn_last_sync = datetime.now(VN_TZ)
-                runtime.evn_last_error = f"{type(error).__name__}: {error}"
+                runtime.evn_last_error = f"{type(error).__name__}: {error}"[:200]
                 # Start (or continue) the failure streak so the "dead for N days"
                 # notice can measure how long EVN has been down.
                 if runtime.evn_failure_since is None:

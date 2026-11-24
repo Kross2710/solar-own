@@ -57,6 +57,7 @@ async def status(runtime: AppRuntime = Depends(get_runtime)) -> JSONResponse:
             "bills": store.evn_counts()["bills"],
             "last_sync": runtime.evn_last_sync.isoformat() if runtime.evn_last_sync else None,
             "last_error": runtime.evn_last_error,
+            "failure_since": runtime.evn_failure_since.isoformat() if runtime.evn_failure_since else None,
         },
         "forecast": {
             "ready": forecaster.ready,
