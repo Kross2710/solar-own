@@ -79,6 +79,15 @@ async def refresh_forecast(runtime: AppRuntime) -> bool:
             f"MAPE {quality['mape']}%, R² {quality['r2']}, n={quality['n_train']}",
             flush=True,
         )
+        # Đặc trưng thời tiết không có dữ liệu nào trong tập train bị impute về 0 ->
+        # mô hình mất hẳn đặc trưng đó mà vẫn báo ready. Phải thấy trong journal.
+        if quality.get("empty_features"):
+            print(
+                f"  [forecast] WARNING: weather features with no training data "
+                f"(imputed to 0, model cannot use them): "
+                f"{', '.join(quality['empty_features'])}",
+                flush=True,
+            )
     return ok
 
 
