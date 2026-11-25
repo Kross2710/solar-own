@@ -5,11 +5,12 @@ JSON; assistant chỉ lo gọi model. API key (nếu cần) nằm trong config.j
 KHÔNG bao giờ lộ ra browser. Pluggable theo config.ai.provider; hỗ trợ:
   - 'gemini' — Google Generative Language REST API (cần api_key).
   - 'ollama' — model chạy LOCAL trên host (không cần key), REST 127.0.0.1:11434.
+  - 'openrouter'/'openai' — API chat completions tương thích OpenAI (cần api_key).
 
 FUNCTION CALLING (2026-08-07): ngoài snapshot tĩnh, server truyền `tools` —
 {name: {"decl": functionDeclaration (JSON Schema kiểu Gemini), "fn": async callable(args)->dict}}.
 Chỉ nhánh Gemini dùng tools (vòng lặp functionCall/functionResponse, tối đa
-_MAX_TOOL_ROUNDS vòng); Ollama (model local yếu) bỏ qua, chat thuần như cũ.
+_MAX_TOOL_ROUNDS vòng).
 
 (Nhận định hằng ngày đã gỡ bỏ 2026-06-27 — tab Trợ lý giờ thuần chat.)
 """
@@ -28,6 +29,8 @@ _DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 _GEMINI_TIMEOUT = httpx.Timeout(90, connect=5)
 _GEMINI_RETRY_STATUS = {500, 502, 503, 504}
 _GEMINI_FALLBACK_STATUS = _GEMINI_RETRY_STATUS | {404, 429}
+_OPENAI_RETRY_STATUS = {429, 500, 502, 503, 504}
+_OPENAI_PROVIDERS = ("openrouter", "openai")
 
 
 def _gemini_generation_config(model: str, max_tokens: int, temperature: float) -> dict:
@@ -61,6 +64,8 @@ PERSONA = (
     "thay bằng 'sắp tới mức giá điện đắt hơn', 'pin còn 66%'. "
     "Khi tư vấn, dựa vào công suất dư (phát − tải), pin còn bao nhiêu, dự báo ngày mai "
     "và giá điện EVN tăng dần theo mức dùng. Viết thành câu văn liền, KHÔNG liệt kê đánh số 1/2/3, không markdown. "
+)
+_TOOL_GUIDANCE = (
     "Bạn có CÔNG CỤ tra dữ liệu (chi tiết 1 ngày bất kỳ, lịch sử theo khoảng ngày, báo cáo kỳ hoá đơn, "
     "điện nắng bị bỏ phí, dự báo thời tiết, hồ sơ 24 giờ) — khi câu hỏi nhắc tới một NGÀY/THÁNG/KỲ cụ thể "
     "hoặc cần dữ liệu không có sẵn bên dưới, hãy GỌI công cụ thay vì đoán hay nói không biết. "
@@ -81,6 +86,8 @@ PERSONA_EN = (
     "don't say 'tier 4', 'SOC', 'kWp'; say 'close to the more expensive price level', 'battery at 66%'. "
     "When advising, use the surplus power (generation − load), the battery level, tomorrow's forecast, "
     "and the fact that EVN prices rise with monthly usage. Write flowing sentences — no numbered lists, no markdown. "
+)
+_TOOL_GUIDANCE_EN = (
     "You have TOOLS to look up data (any single day's detail, history over a date range, billing-cycle "
     "reports, wasted solar, weather forecast, 24-hour usage profile) — when the question mentions a "
     "specific day/month/cycle or needs data not shown below, CALL a tool instead of guessing or refusing. "
@@ -100,7 +107,9 @@ class Assistant:
     def __init__(self, cfg: Optional[dict]):
         cfg = cfg or {}
         self.provider = (cfg.get("provider") or "gemini").lower()
-        self.model = cfg.get("model") or _DEFAULT_GEMINI_MODEL
+        self.model = cfg.get("model") or (
+            "" if self.provider in _OPENAI_PROVIDERS else _DEFAULT_GEMINI_MODEL
+        )
         # Model dự phòng khi model chính trả 429/5xx dai dẳng (gemini-3.5-flash free tier
         # hay 503 giờ cao điểm). Trống -> không fallback.
         self.fallback_model = cfg.get("fallback_model") or ""
@@ -108,13 +117,17 @@ class Assistant:
         self.max_tokens = int(cfg.get("max_tokens", 800))
         # base_url cho Ollama (local) khi chat chạy bằng model local.
         self.ollama_base = (cfg.get("base_url") or "http://127.0.0.1:11434").rstrip("/")
+        self.openai_base = (
+            cfg.get("base_url") or ("https://openrouter.ai/api/v1" if self.provider == "openrouter" else "")
+        ).rstrip("/")
 
-    SUPPORTED = ("gemini", "ollama")
+    SUPPORTED = ("gemini", "ollama", *_OPENAI_PROVIDERS)
 
     def _ok(self, provider: str, api_key: str, model: str) -> bool:
-        # ollama chạy local -> không cần key; gemini cần key. Cả hai cần model.
         if provider not in self.SUPPORTED or not model:
             return False
+        if provider in _OPENAI_PROVIDERS:
+            return bool(api_key and self.openai_base)
         return True if provider == "ollama" else bool(api_key)
 
     @property
@@ -288,6 +301,31 @@ class Assistant:
         text = _THINK_RE.sub("", text).strip()  # cắt <think> lỡ lọt
         return text or _FALLBACK[lang]["empty"]
 
+    async def _openai(self, model: str, api_key: str, system_text: str,
+                      msgs: list, max_tokens: int, temperature: float, lang: str) -> str:
+        url = self.openai_base + "/chat/completions"
+        body = {
+            "model": model,
+            "messages": [{"role": "system", "content": system_text}, *msgs],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }
+        headers = {"Authorization": f"Bearer {api_key}"}
+        async with asyncio.timeout(110), httpx.AsyncClient(timeout=httpx.Timeout(90, connect=5)) as client:
+            response = await client.post(url, headers=headers, json=body)
+            for delay in (1.5, 3.0):
+                if response.status_code not in _OPENAI_RETRY_STATUS:
+                    break
+                await asyncio.sleep(delay)
+                response = await client.post(url, headers=headers, json=body)
+            response.raise_for_status()
+            data = response.json()
+        choices = data.get("choices") or []
+        content = (choices[0].get("message") or {}).get("content") if choices else None
+        text = _THINK_RE.sub("", content or "").strip()
+        return text or _FALLBACK[lang]["empty"]
+
     async def _call(self, provider: str, model: str, api_key: str, system_text: str,
                     msgs: list, max_tokens: int, temperature: float, lang: str = "vi",
                     tools: Optional[dict] = None) -> str:
@@ -297,6 +335,8 @@ class Assistant:
         if provider == "ollama":
             # model local yếu + lib không chắc theo được vòng tool -> chat thuần, bỏ tools
             return await self._ollama(model, system_text, msgs, max_tokens, temperature, lang)
+        if provider in _OPENAI_PROVIDERS:
+            return await self._openai(model, api_key, system_text, msgs, max_tokens, temperature, lang)
         raise ValueError("provider AI chưa hỗ trợ: " + provider)
 
     async def chat(self, context: dict, messages: list, lang: str = "vi",
@@ -337,6 +377,8 @@ class Assistant:
 
     def _system_for(self, context: dict, lang: str) -> str:
         persona = PERSONA_EN if lang == "en" else PERSONA
+        if self.provider not in _OPENAI_PROVIDERS:
+            persona += _TOOL_GUIDANCE_EN if lang == "en" else _TOOL_GUIDANCE
         # nhãn khối dữ liệu theo cùng ngôn ngữ với persona (trước đây luôn VI kể cả chat EN)
         label = "SYSTEM DATA (JSON, real readings):" if lang == "en" else ""
         return self._system_text(context, persona=persona, label=label)
@@ -344,7 +386,7 @@ class Assistant:
     async def chat_stream(self, context: dict, messages: list, lang: str = "vi",
                           tools: Optional[dict] = None):
         """Bản STREAM của chat() — async generator phát event dict (xem _gemini_stream).
-        Chỉ Gemini stream thật; provider khác (Ollama) chạy chat() thường rồi phát 1 delta
+        Chỉ Gemini stream thật; provider khác chạy chat() thường rồi phát 1 delta
         duy nhất — frontend không cần phân biệt. Fallback model như chat(): chỉ khi lỗi
         TẠM và CHƯA phát ra chữ nào (đã phát rồi mà đổi model thì câu trả lời chắp vá)."""
         lang = "en" if lang == "en" else "vi"

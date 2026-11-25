@@ -1,14 +1,19 @@
 import json
+import os
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
+import httpx
 from fastapi.testclient import TestClient
 
 from backend.api import assistant as assistant_api
 from backend.app import create_app
+from backend.config import load_config
 from backend.runtime import AppRuntime
+from providers.assistant import Assistant
 from providers.base import Metrics, Provider, VN_TZ
 from providers.evn import EvnTariff
 from providers.history import HistoryStore
@@ -88,6 +93,56 @@ class AssistantApiTests(TestCase):
 
         self.assertEqual(self.client.get("/api/ai_status").json(), {"enabled": False})
         self.assertEqual(self.client.post("/api/chat", json={}).json(), {"enabled": False})
+
+    def test_openai_compatible_chat_streams_reply(self) -> None:
+        requests = []
+
+        def complete(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json={
+                "choices": [{"message": {"content": "<think>Draft</think> Save power tonight."}}],
+            })
+
+        upstream_client = httpx.AsyncClient(transport=httpx.MockTransport(complete))
+        self.runtime.assistant = Assistant({
+            "provider": "openrouter",
+            "model": "example/solar-model",
+            "api_key": "test-openrouter-key",
+        })
+
+        self.assertEqual(self.client.get("/api/ai_status").json(), {"enabled": True})
+        with patch("providers.assistant.httpx.AsyncClient", return_value=upstream_client):
+            response = self.client.post("/api/chat", json={
+                "messages": [{"role": "user", "content": "Rain tomorrow?"}],
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(_events(response.text), [
+            {"type": "delta", "text": "Save power tonight."},
+            {"type": "done", "actions": []},
+        ])
+        self.assertEqual(len(requests), 1)
+        request = requests[0]
+        self.assertEqual(str(request.url), "https://openrouter.ai/api/v1/chat/completions")
+        self.assertEqual(request.headers["Authorization"], "Bearer test-openrouter-key")
+        body = json.loads(request.content)
+        self.assertEqual(body["model"], "example/solar-model")
+        self.assertEqual(body["messages"][-1], {"role": "user", "content": "Rain tomorrow?"})
+        self.assertIn("this_bill_cycle", body["messages"][0]["content"])
+        self.assertNotIn("You have TOOLS", body["messages"][0]["content"])
+        self.assertNotIn("tools", body)
+
+    def test_openai_compatible_credentials_are_provider_specific(self) -> None:
+        config_path = Path(self.tmp.name) / "config.json"
+        config_path.write_text(json.dumps({
+            "ai": {"provider": "openai", "model": "model", "base_url": "http://localhost:1234/v1", "api_key": "file-key"},
+        }), encoding="utf-8")
+        with patch.dict(os.environ, {"SOLAR_GEMINI_API_KEY": "gemini-key"}, clear=True):
+            self.assertEqual(load_config(config_path.parent)["ai"]["api_key"], "file-key")
+        with patch.dict(os.environ, {"SOLAR_OPENAI_API_KEY": "openai-key"}, clear=True):
+            config = load_config(config_path.parent)["ai"]
+            self.assertEqual(config["api_key"], "openai-key")
+            self.assertTrue(Assistant(config).chat_enabled)
 
     def test_status_sync_and_export(self) -> None:
         self.store.backfill_energy({"2026-09-01": {"cons": 40.0, "buy": 8.0}})
