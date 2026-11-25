@@ -4,12 +4,12 @@ Bối cảnh hệ thống (số liệu thật của nhà) được server ghép 
 JSON; assistant chỉ lo gọi model. API key (nếu cần) nằm trong config.json (server-side) —
 KHÔNG bao giờ lộ ra browser. Pluggable theo config.ai.provider; hỗ trợ:
   - 'gemini' — Google Generative Language REST API (cần api_key).
-  - 'ollama' — model chạy LOCAL trên host (không cần key), REST 127.0.0.1:11434.
+  - 'openai'/'openrouter' — provider tương thích OpenAI (OpenRouter, vLLM, Groq...).
 
 FUNCTION CALLING (2026-08-07): ngoài snapshot tĩnh, server truyền `tools` —
 {name: {"decl": functionDeclaration (JSON Schema kiểu Gemini), "fn": async callable(args)->dict}}.
-Chỉ nhánh Gemini dùng tools (vòng lặp functionCall/functionResponse, tối đa
-_MAX_TOOL_ROUNDS vòng); Ollama (model local yếu) bỏ qua, chat thuần như cũ.
+Nhánh Gemini dùng tools (vòng lặp functionCall/functionResponse, tối đa
+_MAX_TOOL_ROUNDS vòng).
 
 (Nhận định hằng ngày đã gỡ bỏ 2026-06-27 — tab Trợ lý giờ thuần chat.)
 """
@@ -44,8 +44,6 @@ PERSONA = (
     "Bạn có CÔNG CỤ tra dữ liệu (chi tiết 1 ngày bất kỳ, lịch sử theo khoảng ngày, báo cáo kỳ hoá đơn, "
     "điện nắng bị bỏ phí, dự báo thời tiết, hồ sơ 24 giờ) — khi câu hỏi nhắc tới một NGÀY/THÁNG/KỲ cụ thể "
     "hoặc cần dữ liệu không có sẵn bên dưới, hãy GỌI công cụ thay vì đoán hay nói không biết. "
-    "Nếu thấy một thay đổi cài đặt RÕ RÀNG có lợi (vd mai mưa lớn nên nâng mức pin dự phòng), "
-    "gọi propose_action để đề xuất — người dùng sẽ bấm xác nhận, bạn KHÔNG tự thay đổi gì."
 )
 
 # Bản English của PERSONA — CÙNG các ràng buộc hành vi (kết luận trước, làm tròn, không jargon,
@@ -66,8 +64,6 @@ PERSONA_EN = (
     "You have TOOLS to look up data (any single day's detail, history over a date range, billing-cycle "
     "reports, wasted solar, weather forecast, 24-hour usage profile) — when the question mentions a "
     "specific day/month/cycle or needs data not shown below, CALL a tool instead of guessing or refusing. "
-    "If a settings change is CLEARLY beneficial (e.g. heavy rain tomorrow → raise the battery reserve), "
-    "call propose_action to suggest it — the user confirms with a button; you never change anything yourself."
 )
 
 # Câu lùi khi model không trả lời được — theo ngôn ngữ UI.
@@ -90,16 +86,17 @@ class Assistant:
         self.fallback_model = cfg.get("fallback_model") or ""
         self.api_key = cfg.get("api_key") or ""
         self.max_tokens = int(cfg.get("max_tokens", 800))
-        # base_url cho Ollama (local) khi chat chạy bằng model local.
-        self.ollama_base = (cfg.get("base_url") or "http://127.0.0.1:11434").rstrip("/")
+        # base_url cho provider tương thích OpenAI (OpenRouter, vLLM, Groq...). Free model
+        # trên OpenRouter giờ cần key miễn phí (không thẻ); gửi không key = 401.
+        self.openai_base = (cfg.get("base_url") or "https://openrouter.ai/api/v1").rstrip("/")
 
-    SUPPORTED = ("gemini", "ollama")
+    SUPPORTED = ("gemini", "openai", "openrouter")
 
     def _ok(self, provider: str, api_key: str, model: str) -> bool:
-        # ollama chạy local -> không cần key; gemini cần key. Cả hai cần model.
+        # gemini/provider OpenAI đều cần key; cần model.
         if provider not in self.SUPPORTED or not model:
             return False
-        return True if provider == "ollama" else bool(api_key)
+        return bool(api_key)
 
     @property
     def chat_enabled(self) -> bool:
@@ -251,24 +248,31 @@ class Assistant:
         if not emitted_any:
             yield {"type": "delta", "text": _FALLBACK[lang]["empty"]}
 
-    async def _ollama(self, model: str, system_text: str,
+    async def _openai(self, model: str, base_url: str, api_key: str, system_text: str,
                       msgs: list, max_tokens: int, temperature: float, lang: str = "vi") -> str:
-        url = self.ollama_base + "/api/chat"
+        """Chat qua giao diện OpenAI-compatible (OpenRouter, vLLM, ...). Không tool ở chế
+        độ free: model free gọi tool không ổn và mỗi vòng tool đốt nhiều request trong
+        khi quota free chỉ ~50/ngày. Hệ thống gửi dưới dạng system-message như Ollama."""
+        url = base_url.rstrip("/") + "/chat/completions"
         messages = [{"role": "system", "content": system_text}]
         messages += [{"role": m["role"], "content": m["content"]} for m in msgs]
         body = {
             "model": model,
             "messages": messages,
-            "stream": False,
-            "think": False,  # tắt suy luận họ Qwen3 (không thì lòi đoạn <think> + chậm)
-            "options": {"temperature": temperature, "num_predict": max_tokens},
+            "temperature": temperature,
+            "max_tokens": max_tokens,
         }
-        # CPU local (host N100) chậm: nhận định ~12–45s kể cả lúc nạp model lần đầu -> timeout rộng.
+        # Retry lỗi tạm (429 rate-limit free tier / 5xx quá tải).
         async with httpx.AsyncClient(timeout=120) as client:
-            r = await client.post(url, json=body)
-            r.raise_for_status()
-            data = r.json()
-        text = ((data.get("message") or {}).get("content") or "").strip()
+            resp = await client.post(url, headers={"Authorization": "Bearer " + api_key}, json=body)
+            for attempt in range(2):
+                if resp.status_code not in (429, 500, 502, 503):
+                    break
+                await asyncio.sleep(1.5 * (attempt + 1))
+                resp = await client.post(url, headers={"Authorization": "Bearer " + api_key}, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+        text = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
         text = _THINK_RE.sub("", text).strip()  # cắt <think> lỡ lọt
         return text or _FALLBACK[lang]["empty"]
 
@@ -278,9 +282,11 @@ class Assistant:
         if provider == "gemini":
             return await self._gemini(model, api_key, system_text, msgs, max_tokens,
                                       temperature, lang, tools=tools)
-        if provider == "ollama":
-            # model local yếu + lib không chắc theo được vòng tool -> chat thuần, bỏ tools
-            return await self._ollama(model, system_text, msgs, max_tokens, temperature, lang)
+        if provider in ("openai", "openrouter"):
+            # OpenAI-compatible (OpenRouter free/paid): chat thuần, không tool — model free
+            # gọi tool không ổn và nhanh hết quota 50/ngày.
+            return await self._openai(model, self.openai_base, api_key, system_text,
+                                      msgs, max_tokens, temperature, lang)
         raise ValueError("provider AI chưa hỗ trợ: " + provider)
 
     async def chat(self, context: dict, messages: list, lang: str = "vi",

@@ -1,7 +1,7 @@
 import { COLORS } from "@/lib/colors";
 import { fmtMoney, fmtNum, parseDateMonth } from "@/lib/format";
 import { MetricsResponse } from "@/lib/types";
-import { ChatEntry, ChatStreamEvent, Notice, ProposedAction } from "@/lib/types/assistant";
+import { ChatEntry, ChatStreamEvent, Notice } from "@/lib/types/assistant";
 
 // Each question is also the prompt sent to the model, so it must read as a real question.
 // They ask what the screen can't answer at a glance.
@@ -37,7 +37,6 @@ const TOOL_LABELS: Record<string, string> = {
   get_curtailment: "Checking wasted sunshine…",
   get_weather_forecast: "Checking the weather forecast…",
   get_hourly_profile: "Looking at your usual day, hour by hour…",
-  propose_action: "Preparing a suggestion…",
 };
 
 export function toolLabel(tool: string): string {
@@ -50,15 +49,6 @@ export function errorText(code: string | null): string {
   if (code) return "The assistant hit an error — try again later.";
   return "No reply yet — please try again.";
 }
-
-export function actionLabel(action: ProposedAction): string {
-  if (action.kind === "set_reserve" && action.params.reserve_pct != null) {
-    return `Change battery reserve from ${fmtNum(action.current)}% to ${fmtNum(action.params.reserve_pct)}%`;
-  }
-  return action.kind;
-}
-
-export const ACTION_NOTE = "Used for dashboard calculations — nothing is written to the inverter.";
 
 export interface NoticeView {
   icon: string;

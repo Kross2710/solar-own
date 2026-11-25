@@ -31,7 +31,6 @@ class FakeAssistant:
     async def chat_stream(self, context, messages, lang="en", tools=None):
         self.seen = {"context": context, "messages": messages, "lang": lang}
         yield {"type": "status", "tool": "get_day_detail"}
-        await tools["propose_action"]["fn"]({"action": "set_reserve", "reserve_pct": 40, "reason": "rain"})
         yield {"type": "delta", "text": "Keep more "}
         yield {"type": "delta", "text": "battery tonight."}
 
@@ -64,14 +63,13 @@ class AssistantApiTests(TestCase):
         self.client_context.__exit__(None, None, None)
         self.tmp.cleanup()
 
-    def test_chat_streams_status_text_and_actions(self) -> None:
+    def test_chat_streams_status_text(self) -> None:
         response = self.client.post("/api/chat", json={"messages": [{"role": "user", "content": "Rain tomorrow?"}]})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
         events = _events(response.text)
         self.assertEqual([e["type"] for e in events], ["status", "delta", "delta", "done"])
-        self.assertEqual(events[-1]["actions"][0]["params"], {"reserve_pct": 40})
         self.assertEqual(self.assistant.seen["lang"], "en")
         self.assertIn("this_bill_cycle", self.assistant.seen["context"])
 

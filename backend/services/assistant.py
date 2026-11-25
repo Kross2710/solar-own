@@ -149,8 +149,7 @@ Tool = dict[str, Any]
 def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[str, Tool]:
     """Function-calling registry: {name: {"decl": Gemini functionDeclaration, "fn": async(args) -> dict}}.
 
-    Every tool only reads data, except propose_action, which queues a suggestion that the
-    user must confirm in the UI (/api/action). The model can never change anything itself.
+    Every tool only reads data. The model can never change anything itself.
     """
     store = runtime.store
     provider = runtime.history_provider
@@ -239,19 +238,6 @@ def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[
         return {"hours": store.hourly_profile(30),
                 "note": "30-day average; pv/load/grid in W; grid > 0 buys, < 0 sells"}
 
-    async def propose_action(args: dict) -> dict:
-        kind = str(args.get("action") or "")
-        if kind != "set_reserve":
-            raise ValueError("only action=set_reserve is supported")
-        pct = int(float(args.get("reserve_pct") or 0))
-        if not RESERVE_MIN_PCT <= pct <= RESERVE_MAX_PCT:
-            raise ValueError(f"reserve_pct must be {RESERVE_MIN_PCT}..{RESERVE_MAX_PCT}")
-        current = float(runtime.config.get("battery_reserve_percent", 20))
-        action_sink.append({"kind": kind, "params": {"reserve_pct": pct}, "current": current,
-                            "reason": str(args.get("reason") or "")[:300]})
-        return {"ok": True, "queued_for_user_confirmation": True,
-                "current_reserve_pct": current, "proposed_reserve_pct": pct}
-
     obj, string, integer, number = "object", "string", "integer", "number"
     return {
         "get_day_detail": {"fn": get_day_detail, "decl": {
@@ -282,14 +268,6 @@ def build_tools(runtime: AppRuntime, action_sink: list[dict[str, Any]]) -> dict[
             "name": "get_hourly_profile",
             "description": "Average 24-hour profile over 30 days (W generated/used/bought per hour), for questions about the best time to use power.",
             "parameters": {"type": obj, "properties": {}}}},
-        "propose_action": {"fn": propose_action, "decl": {
-            "name": "propose_action",
-            "description": f"SUGGEST a settings change for the user to confirm (never applied by you). Supported: action='set_reserve' changes the battery reserve (%) the dashboard uses in its estimates. Only call when the benefit is CLEAR, and explain why.",
-            "parameters": {"type": obj, "properties": {
-                "action": {"type": string, "description": "set_reserve"},
-                "reserve_pct": {"type": number, "description": f"{RESERVE_MIN_PCT}..{RESERVE_MAX_PCT}"},
-                "reason": {"type": string, "description": "short reason, in the language of the chat"}},
-                "required": ["action", "reserve_pct", "reason"]}}},
     }
 
 

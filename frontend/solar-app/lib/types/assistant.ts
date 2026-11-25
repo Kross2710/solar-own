@@ -6,24 +6,13 @@ export interface AiStatusResponse {
 
 export type ChatRole = "user" | "assistant";
 
-export interface ProposedAction {
-  kind: "set_reserve" | string;
-  params: { reserve_pct?: number };
-  current: number;
-  reason: string;
-}
-
-export type ActionState = "pending" | "applying" | "applied" | "dismissed" | "failed";
-
-export type ChatEntry =
-  | { id: string; type: "message"; role: ChatRole; content: string; error?: boolean }
-  | { id: string; type: "action"; action: ProposedAction; state: ActionState };
+export type ChatEntry = { id: string; type: "message"; role: ChatRole; content: string; error?: boolean };
 
 export type ChatStreamEvent =
   | { type: "status"; tool: string }
   | { type: "delta"; text: string }
   | { type: "error"; error_code: string }
-  | { type: "done"; actions: ProposedAction[] };
+  | { type: "done" };
 
 export type NoticeSeverity = "warn" | "info";
 
