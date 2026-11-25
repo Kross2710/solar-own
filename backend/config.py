@@ -18,7 +18,6 @@ _CREDENTIAL_ENV = {
     ("evn", "portal", "customer_id"): "SOLAR_EVN_CUSTOMER_ID",
     ("evn", "portal", "username"): "SOLAR_EVN_USERNAME",
     ("evn", "portal", "password"): "SOLAR_EVN_PASSWORD",
-    ("ai", "api_key"): "SOLAR_GEMINI_API_KEY",
     ("push", "private_key_file"): "SOLAR_PUSH_PRIVATE_KEY_FILE",
     ("push", "contact"): "SOLAR_PUSH_CONTACT",
     ("push", "setup_code"): "SOLAR_PUSH_SETUP_CODE",
@@ -41,7 +40,16 @@ def _load_dotenv(path: Path) -> dict[str, str]:
 
 def _apply_env_overrides(config: dict[str, Any], env: dict[str, str]) -> None:
     """Override credential fields from env (os.environ wins over .env file)."""
-    for path_keys, env_name in _CREDENTIAL_ENV.items():
+    ai_provider = ((config.get("ai") or {}).get("provider") or "gemini").lower()
+    ai_key_env = {
+        "gemini": "SOLAR_GEMINI_API_KEY",
+        "openrouter": "SOLAR_OPENROUTER_API_KEY",
+        "openai": "SOLAR_OPENAI_API_KEY",
+    }.get(ai_provider)
+    credentials = dict(_CREDENTIAL_ENV)
+    if ai_key_env:
+        credentials[("ai", "api_key")] = ai_key_env
+    for path_keys, env_name in credentials.items():
         value = os.environ.get(env_name) or env.get(env_name)
         if not value:
             continue

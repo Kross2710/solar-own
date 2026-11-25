@@ -28,7 +28,7 @@ The Next.js app lives in `frontend/solar-next`, with `frontend/solar-app` as the
 - Optional local Modbus reads through the `goodwe` package
 - EVN residential tiered tariff, with VAT, for savings and the projected bill
 - Optional yield forecast from Open-Meteo weather plus a walk-forward model (Ridge, or gradient boosting when scikit-learn is installed)
-- Optional assistant: Gemini, or a local Ollama model, with function calls against the stored history
+- Optional assistant with Gemini, local Ollama, or an OpenAI-compatible chat provider
 
 `source` in the config selects the live provider: `mock`, `cloud`, or `local`. `history_source` can point history reads at a different provider.
 
@@ -165,7 +165,12 @@ Leave `station_id` empty to use the first station on the account.
 }
 ```
 
-`provider` can be `gemini` (needs `api_key`) or `ollama` (local, default `http://127.0.0.1:11434`). Gemini can call tools for a day, daily history, the billing cycle, curtailment, the weather forecast, and the hourly profile.
+- `gemini` requires an API key and can call tools for daily history, billing, curtailment, weather forecasts, and hourly profiles.
+- `ollama` defaults to `http://127.0.0.1:11434` and works without an API key.
+- `openrouter` requires a model ID and API key. Its default `base_url` is `https://openrouter.ai/api/v1`.
+- `openai` requires a model ID, API key, and `base_url` for the compatible API, for example `https://api.openai.com/v1`.
+
+OpenAI-compatible providers receive recent messages and the dashboard data snapshot for each reply. They use chat completions without history tools and return the completed answer in a single update. Set keys server-side in `ai.api_key` or use the corresponding `SOLAR_GEMINI_API_KEY`, `SOLAR_OPENROUTER_API_KEY`, or `SOLAR_OPENAI_API_KEY` environment variable.
 
 ## Tests
 
